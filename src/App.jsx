@@ -12,13 +12,14 @@ import {
   Target, 
   Briefcase, 
   User, 
+  Users,
+  UserCircle,
   X, 
   Edit2,
   Save,
   ChevronRight,
   LogOut,
   FileSpreadsheet,
-  FileText,
   Table,
   ShieldAlert,
   ShieldCheck,
@@ -1156,7 +1157,7 @@ function App() {
               onClick={() => setActiveTab('Clients')}
               className={`nav-item ${activeTab === 'Clients' ? 'active' : ''}`}
             >
-              <User size={20} />
+              <Users size={20} />
               Clients
             </button>
             
@@ -1199,7 +1200,7 @@ function App() {
             <h4 className="section-title">Data Management</h4>
             <div className="import-grid">
               <button onClick={handleImportClick} title="Import CSV" className="import-btn">
-                <FileText size={20} />
+                <FileSpreadsheet size={20} />
                 <span className="import-label">CSV</span>
               </button>
               <button onClick={handleExportJSON} title="Export JSON" className="import-btn">
@@ -1323,7 +1324,7 @@ function App() {
                 >
                   <div className="card-header">
                     <div className="icon-box">
-                      <Briefcase size={24} />
+                      <UserCircle size={24} />
                     </div>
                     
                     {/* Selection Checkbox */}
