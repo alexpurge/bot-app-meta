@@ -137,6 +137,11 @@ const STYLES = `
   
   /* Controls */
   .controls { display: flex; gap: 1rem; width: 100%; max-width: 900px; flex-wrap: wrap; align-items: center; }
+  .risk-controls { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; width: 100%; }
+  .risk-filter-card { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.85rem; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.5); }
+  .risk-filter-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; }
+  .risk-filter-meta { display: flex; flex-direction: column; gap: 0.25rem; min-width: 140px; }
+  .risk-filter-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.75rem; border-radius: 999px; background-color: #fff7ed; color: #ff5d00; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
   
   /* Custom Select */
   .custom-select-wrapper { position: relative; display: flex; align-items: center; }
@@ -639,7 +644,8 @@ function App() {
     }
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [riskFilter, setRiskFilter] = useState('');
+  const [riskFilterDraft, setRiskFilterDraft] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedClientIds, setSelectedClientIds] = useState(new Set());
   const [bulkActionType, setBulkActionType] = useState('');
@@ -731,8 +737,7 @@ function App() {
         client.contactName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         client.email.toLowerCase().includes(searchQuery.toLowerCase());
       
-      if (statusFilter === 'All') return matchesSearch;
-      return matchesSearch && client.status === statusFilter;
+      return matchesSearch;
     });
   };
 
@@ -1244,67 +1249,93 @@ function App() {
             </div>
             
             <div className="controls">
-              {/* Status Filter */}
-              <div className="custom-select-wrapper">
-                <select 
-                  className="custom-select"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="All">All Status</option>
-                  <option value="Active">Active</option>
-                  <option value="Paused">Paused</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-                <ChevronDown className="custom-select-arrow" size={16} />
-              </div>
-
-              <div className="search-wrapper">
-                <Search className="search-icon" size={20} />
-                <input 
-                  type="text" 
-                  placeholder="Search..." 
-                  className="search-input"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              {selectedClientIds.size > 0 ? (
+              {activeTab === 'Clients' && (
                 <>
-                  <button onClick={selectAll} className="btn-secondary" title="Select All in View">
-                    <CheckSquare size={18} /> Select All
-                  </button>
-                  <div className="custom-select-wrapper">
-                    <select 
-                      className="custom-select"
-                      style={{ minWidth: '140px' }}
-                      value={bulkActionType}
-                      onChange={(e) => setBulkActionType(e.target.value)}
-                    >
-                      <option value="">Bulk Actions...</option>
-                      <option value="Active">Set Active</option>
-                      <option value="Paused">Set Paused</option>
-                      <option value="Cancelled">Set Cancelled</option>
-                      <option value="delete">Delete Selected</option>
-                    </select>
-                    <ChevronDown className="custom-select-arrow" size={16} />
+                  <div className="search-wrapper">
+                    <Search className="search-icon" size={20} />
+                    <input 
+                      type="text" 
+                      placeholder="Search..." 
+                      className="search-input"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                   </div>
-                  <button onClick={applyBulkAction} className="btn-primary" disabled={!bulkActionType}>
-                    Submit <ArrowRight size={16} />
-                  </button>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b', alignSelf: 'center', marginLeft: '0.5rem' }}>
-                    {selectedClientIds.size} Selected
-                  </span>
+
+                  {selectedClientIds.size > 0 ? (
+                    <>
+                      <button onClick={selectAll} className="btn-secondary" title="Select All in View">
+                        <CheckSquare size={18} /> Select All
+                      </button>
+                      <div className="custom-select-wrapper">
+                        <select 
+                          className="custom-select"
+                          style={{ minWidth: '140px' }}
+                          value={bulkActionType}
+                          onChange={(e) => setBulkActionType(e.target.value)}
+                        >
+                          <option value="">Bulk Actions...</option>
+                          <option value="Active">Set Active</option>
+                          <option value="Paused">Set Paused</option>
+                          <option value="Cancelled">Set Cancelled</option>
+                          <option value="delete">Delete Selected</option>
+                        </select>
+                        <ChevronDown className="custom-select-arrow" size={16} />
+                      </div>
+                      <button onClick={applyBulkAction} className="btn-primary" disabled={!bulkActionType}>
+                        Submit <ArrowRight size={16} />
+                      </button>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b', alignSelf: 'center', marginLeft: '0.5rem' }}>
+                        {selectedClientIds.size} Selected
+                      </span>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="btn-primary"
+                    >
+                      <Plus size={20} />
+                      <span>Add New</span>
+                    </button>
+                  )}
                 </>
-              ) : (
-                <button 
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="btn-primary"
-                >
-                  <Plus size={20} />
-                  <span>Add New</span>
-                </button>
+              )}
+
+              {(activeTab === 'Meta Risk' || activeTab === 'Google Risk') && (
+                <div className="risk-controls">
+                  <button className="btn-secondary">
+                    {activeTab === 'Google Risk' ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />} Show Risk
+                  </button>
+                  <div className="risk-filter-card">
+                    <div className="risk-filter-meta">
+                      <span className="risk-filter-label">Risk Filter</span>
+                      <div className="custom-select-wrapper">
+                        <select
+                          className="custom-select"
+                          value={riskFilterDraft}
+                          onChange={(e) => setRiskFilterDraft(e.target.value)}
+                        >
+                          <option value="">Select Filter</option>
+                          <option value="CPA">CPA</option>
+                          <option value="Creative">Creative</option>
+                        </select>
+                        <ChevronDown className="custom-select-arrow" size={16} />
+                      </div>
+                    </div>
+                    {riskFilter && (
+                      <span className="risk-filter-pill">
+                        <Filter size={14} /> {riskFilter}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    className="btn-primary"
+                    onClick={() => setRiskFilter(riskFilterDraft)}
+                    disabled={!riskFilterDraft}
+                  >
+                    Apply <ArrowRight size={16} />
+                  </button>
+                </div>
               )}
             </div>
           </header>
