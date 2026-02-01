@@ -187,6 +187,11 @@ const STYLES = `
   .info-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #475569; }
   .info-icon { color: #ff5d00; flex-shrink: 0; }
   .text-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .additional-section { margin-top: 1.25rem; }
+  .additional-controls { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  .additional-add-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; border: 1px dashed #cbd5e1; background-color: #f8fafc; color: #475569; font-weight: 600; cursor: pointer; }
+  .additional-add-btn:hover { border-color: #ff5d00; color: #ff5d00; background-color: #fff7ed; }
+  .additional-select { min-width: 160px; height: 2.5rem; padding: 0.5rem 2.25rem 0.5rem 0.75rem; font-size: 0.9rem; }
   .card-footer { padding-top: 1rem; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
   .service-tag { font-size: 0.75rem; font-weight: 500; color: #94a3b8; }
   .view-link { color: #ff5d00; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; border: none; background: none; cursor: pointer; transition: transform 0.2s; }
@@ -1771,6 +1776,25 @@ function App() {
                           </div>
                         </>
                       )}
+
+                      <div className="additional-section">
+                        <h3 className="section-label">Additional</h3>
+                        <div className="additional-controls">
+                          <button type="button" className="additional-add-btn">
+                            <Plus size={16} />
+                            Add details
+                          </button>
+                          <div className="custom-select-wrapper">
+                            <select className="custom-select additional-select" defaultValue="">
+                              <option value="">Select icon</option>
+                              <option value="note">Note</option>
+                              <option value="link">Link</option>
+                              <option value="flag">Flag</option>
+                            </select>
+                            <ChevronDown className="custom-select-arrow" size={16} />
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {/* --- Right Column: Strategy --- */}

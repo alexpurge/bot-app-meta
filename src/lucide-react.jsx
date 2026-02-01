@@ -51,7 +51,16 @@ export const Search = createIcon(
   </>
 );
 export const Plus = createIcon('Plus');
-export const Trash2 = createIcon('Trash2');
+export const Trash2 = createIcon(
+  'Trash2',
+  <>
+    <path d="M3 6h18" />
+    <path d="M8 6V4h8v2" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+    <path d="M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14" />
+  </>
+);
 export const Phone = createIcon(
   'Phone',
   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.11 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
@@ -70,8 +79,21 @@ export const MapPin = createIcon(
     <circle cx="12" cy="10" r="3" />
   </>
 );
-export const Globe = createIcon('Globe');
-export const DollarSign = createIcon('DollarSign');
+export const Globe = createIcon(
+  'Globe',
+  <>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </>
+);
+export const DollarSign = createIcon(
+  'DollarSign',
+  <>
+    <line x1="12" y1="1" x2="12" y2="23" />
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+  </>
+);
 export const Target = createIcon(
   'Target',
   <>
@@ -112,8 +134,20 @@ export const UserCircle = createIcon(
     <path d="M6.5 18a6 6 0 0 1 11 0" />
   </>
 );
-export const X = createIcon('X');
-export const Edit2 = createIcon('Edit2');
+export const X = createIcon(
+  'X',
+  <>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </>
+);
+export const Edit2 = createIcon(
+  'Edit2',
+  <>
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    <path d="m15 5 4 4" />
+  </>
+);
 export const Save = createIcon('Save');
 export const ChevronRight = createIcon('ChevronRight');
 export const LogOut = createIcon('LogOut');
