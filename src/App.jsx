@@ -39,7 +39,7 @@ import {
   XSquare,
   ChevronDown,
   ArrowRight
-} from 'lucide-react';
+} from './lucide-react';
 
 // --- CSS STYLES (Vanilla CSS) ---
 const STYLES = `
