@@ -112,7 +112,7 @@ const STYLES = `
     align-items: center; 
     justify-content: center; 
     background-color: #000000; 
-    border: 5px solid #111111; 
+    border: none; 
   }
   .brand-logo { width: 36px; height: 36px; display: block; }
   .brand-accent { color: #ff5d00; }
@@ -146,7 +146,7 @@ const STYLES = `
 
   .search-wrapper { position: relative; flex: 1; min-width: 200px; }
   .search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #94a3b8; }
-  .search-input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border-radius: 0.75rem; border: none; background: white; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); outline: none; transition: box-shadow 0.2s; font-size: 1rem; border: 1px solid #e2e8f0; height: 3.125rem; }
+  .search-input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border-radius: 0.75rem; border: none; background: white; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); outline: none; transition: box-shadow 0.2s; font-size: 1rem; border: 1px solid #e2e8f0; height: 3.125rem; color: #0f172a; }
   .search-input:focus { ring: 2px solid #ff5d00; border-color: #ff5d00; }
   
   .btn-primary { background-color: #ff5d00; color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(255, 93, 0, 0.3); transition: transform 0.1s; white-space: nowrap; height: 3.125rem; }
