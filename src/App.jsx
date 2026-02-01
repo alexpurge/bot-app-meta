@@ -104,6 +104,15 @@ const STYLES = `
   /* Sidebar Elements */
   .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #1e293b; }
   .brand { font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 0.6rem; letter-spacing: -0.05em; }
+  .brand-logo-container { 
+    width: 46px; 
+    height: 46px; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    background-color: #000000; 
+    border: 5px solid #111111; 
+  }
   .brand-logo { width: 36px; height: 36px; display: block; }
   .brand-accent { color: #ff5d00; }
   .nav-menu { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -1135,7 +1144,9 @@ function App() {
         <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-header">
             <h1 className="brand">
-              <img className="brand-logo" src={purgeLogo} alt="Purge CRM logo" />
+              <span className="brand-logo-container">
+                <img className="brand-logo" src={purgeLogo} alt="Purge CRM logo" />
+              </span>
               PURGE<span className="brand-accent">CRM</span>
             </h1>
           </div>
