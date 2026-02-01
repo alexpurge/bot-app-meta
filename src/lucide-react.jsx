@@ -43,7 +43,13 @@ const createIcon = (label, children) => {
   return Icon;
 };
 
-export const Search = createIcon('Search');
+export const Search = createIcon(
+  'Search',
+  <>
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </>
+);
 export const Plus = createIcon('Plus');
 export const Trash2 = createIcon('Trash2');
 export const Phone = createIcon(
@@ -146,7 +152,10 @@ export const XCircle = createIcon('XCircle');
 export const AlertCircle = createIcon('AlertCircle');
 export const List = createIcon('List');
 export const Bug = createIcon('Bug');
-export const Check = createIcon('Check');
+export const Check = createIcon(
+  'Check',
+  <polyline points="20 6 9 17 4 12" />
+);
 export const FileJson = createIcon(
   'FileJson',
   <>
@@ -157,10 +166,25 @@ export const FileJson = createIcon(
   </>
 );
 export const Filter = createIcon('Filter');
-export const CheckSquare = createIcon('CheckSquare');
+export const CheckSquare = createIcon(
+  'CheckSquare',
+  <>
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <polyline points="9 12 12 15 17 10" />
+  </>
+);
 export const Square = createIcon('Square');
 export const Play = createIcon('Play');
 export const Pause = createIcon('Pause');
 export const XSquare = createIcon('XSquare');
-export const ChevronDown = createIcon('ChevronDown');
-export const ArrowRight = createIcon('ArrowRight');
+export const ChevronDown = createIcon(
+  'ChevronDown',
+  <polyline points="6 9 12 15 18 9" />
+);
+export const ArrowRight = createIcon(
+  'ArrowRight',
+  <>
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </>
+);
