@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import purgeLogo from './assets/purge-logo.svg';
 import { 
   Search, 
   Plus, 
@@ -102,8 +103,8 @@ const STYLES = `
   
   /* Sidebar Elements */
   .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #1e293b; }
-  .brand { font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; letter-spacing: -0.05em; }
-  .brand-marker { width: 12px; height: 32px; background-color: #ff5d00; border-radius: 2px; }
+  .brand { font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 0.6rem; letter-spacing: -0.05em; }
+  .brand-logo { width: 36px; height: 36px; display: block; }
   .brand-accent { color: #ff5d00; }
   .nav-menu { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
   .nav-item { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 500; cursor: pointer; transition: all 0.2s; border: none; background: transparent; text-align: left; font-size: 0.95rem; color: #94a3b8; }
@@ -1134,7 +1135,7 @@ function App() {
         <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-header">
             <h1 className="brand">
-              <div className="brand-marker"></div>
+              <img className="brand-logo" src={purgeLogo} alt="Purge CRM logo" />
               PURGE<span className="brand-accent">CRM</span>
             </h1>
           </div>
