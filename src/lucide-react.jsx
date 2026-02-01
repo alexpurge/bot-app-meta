@@ -1,6 +1,6 @@
 import React from 'react';
 
-const createIcon = (label) => {
+const createIcon = (label, children) => {
   const Icon = React.forwardRef(
     (
       {
@@ -28,9 +28,13 @@ const createIcon = (label) => {
         className={className}
         {...props}
       >
-        <circle cx="12" cy="12" r="9" />
-        <path d="M8 12h8" />
-        <path d="M12 8v8" />
+        {children ?? (
+          <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M8 12h8" />
+            <path d="M12 8v8" />
+          </>
+        )}
       </svg>
     )
   );
@@ -42,24 +46,99 @@ const createIcon = (label) => {
 export const Search = createIcon('Search');
 export const Plus = createIcon('Plus');
 export const Trash2 = createIcon('Trash2');
-export const Phone = createIcon('Phone');
-export const Mail = createIcon('Mail');
-export const MapPin = createIcon('MapPin');
+export const Phone = createIcon(
+  'Phone',
+  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.11 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+);
+export const Mail = createIcon(
+  'Mail',
+  <>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3 7 9 6 9-6" />
+  </>
+);
+export const MapPin = createIcon(
+  'MapPin',
+  <>
+    <path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0Z" />
+    <circle cx="12" cy="10" r="3" />
+  </>
+);
 export const Globe = createIcon('Globe');
 export const DollarSign = createIcon('DollarSign');
-export const Target = createIcon('Target');
-export const Briefcase = createIcon('Briefcase');
-export const User = createIcon('User');
+export const Target = createIcon(
+  'Target',
+  <>
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="6" />
+    <circle cx="12" cy="12" r="2" />
+  </>
+);
+export const Briefcase = createIcon(
+  'Briefcase',
+  <>
+    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+    <path d="M2 13h20" />
+  </>
+);
+export const User = createIcon(
+  'User',
+  <>
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </>
+);
+export const Users = createIcon(
+  'Users',
+  <>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </>
+);
+export const UserCircle = createIcon(
+  'UserCircle',
+  <>
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="10" r="3" />
+    <path d="M6.5 18a6 6 0 0 1 11 0" />
+  </>
+);
 export const X = createIcon('X');
 export const Edit2 = createIcon('Edit2');
 export const Save = createIcon('Save');
 export const ChevronRight = createIcon('ChevronRight');
 export const LogOut = createIcon('LogOut');
-export const FileSpreadsheet = createIcon('FileSpreadsheet');
+export const FileSpreadsheet = createIcon(
+  'FileSpreadsheet',
+  <>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <path d="M8 13h8" />
+    <path d="M8 17h8" />
+    <path d="M8 9h2" />
+    <path d="M14 9h2" />
+  </>
+);
 export const FileText = createIcon('FileText');
 export const Table = createIcon('Table');
-export const ShieldAlert = createIcon('ShieldAlert');
-export const ShieldCheck = createIcon('ShieldCheck');
+export const ShieldAlert = createIcon(
+  'ShieldAlert',
+  <>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="M12 8v4" />
+    <path d="M12 16h.01" />
+  </>
+);
+export const ShieldCheck = createIcon(
+  'ShieldCheck',
+  <>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="M9 12l2 2 4-4" />
+  </>
+);
 export const Menu = createIcon('Menu');
 export const AlertTriangle = createIcon('AlertTriangle');
 export const CheckCircle = createIcon('CheckCircle');
@@ -68,7 +147,15 @@ export const AlertCircle = createIcon('AlertCircle');
 export const List = createIcon('List');
 export const Bug = createIcon('Bug');
 export const Check = createIcon('Check');
-export const FileJson = createIcon('FileJson');
+export const FileJson = createIcon(
+  'FileJson',
+  <>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <path d="M10 12H9a1 1 0 0 0-1 1v2a1 1 0 0 1-1 1H6" />
+    <path d="M14 12h1a1 1 0 0 1 1 1v2a1 1 0 0 0 1 1h1" />
+  </>
+);
 export const Filter = createIcon('Filter');
 export const CheckSquare = createIcon('CheckSquare');
 export const Square = createIcon('Square');
