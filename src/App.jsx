@@ -230,6 +230,7 @@ const STYLES = `
   .tag-group { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
   .tag-primary { background-color: rgba(255, 93, 0, 0.15); color: var(--accent-primary); padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 600; border: 1px solid rgba(255, 93, 0, 0.35); }
   .tag-secondary { background-color: rgba(148, 163, 184, 0.15); color: var(--text-secondary); padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; border: 1px solid rgba(148, 163, 184, 0.2); }
+  .tag-risk { background-color: rgba(248, 113, 113, 0.15); color: #f87171; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 700; display: flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(248, 113, 113, 0.35); text-transform: uppercase; letter-spacing: 0.04em; }
   
   .detail-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-top: 1.5rem; }
   @media (min-width: 768px) { .detail-grid { grid-template-columns: 1fr 1fr; } }
@@ -454,6 +455,8 @@ const STYLES = `
 
 const AIRCALL_APP_ID = '827d006737dd9e69aaa89d6300a1a9f8';
 const AIRCALL_BASE_URL = 'https://api.aircall.io/v1';
+const AIRCALL_TEAM_NAME = 'Account Management';
+const BRISBANE_TIME_ZONE = 'Australia/Brisbane';
 
 // --- Seed Data ---
 const SEED_DATA = [
@@ -890,7 +893,11 @@ function App() {
     if (!value) return 'Unknown date';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'Unknown date';
-    return date.toLocaleString();
+    return date.toLocaleString('en-AU', {
+      timeZone: BRISBANE_TIME_ZONE,
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
   };
 
   const normalizePhoneNumber = (phone) => {
@@ -914,7 +921,36 @@ function App() {
     if (!value) return 'Unknown date';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'Unknown date';
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-AU', {
+      timeZone: BRISBANE_TIME_ZONE
+    });
+  };
+
+  const parseAircallTimestamp = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'number') {
+      return value < 1e12 ? value * 1000 : value;
+    }
+    if (typeof value === 'string' && /^\d+$/.test(value)) {
+      const numeric = Number(value);
+      return numeric < 1e12 ? numeric * 1000 : numeric;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.getTime();
+  };
+
+  const getBrisbaneNow = () => {
+    const now = new Date();
+    const brisbaneString = now.toLocaleString('en-AU', { timeZone: BRISBANE_TIME_ZONE });
+    return new Date(brisbaneString);
+  };
+
+  const getBrisbaneRange = (daysBack) => {
+    const end = getBrisbaneNow();
+    const start = new Date(end);
+    start.setDate(start.getDate() - daysBack);
+    return { start, end };
   };
 
   const getMonthlyRecurringRevenue = (subscriptions = []) => subscriptions.reduce((total, subscription) => {
@@ -1386,23 +1422,65 @@ function App() {
           loading: false,
           error: null,
           nextPage: 1,
-          hasMore: false
+          hasMore: false,
+          hasRisk: false,
+          lastUpdated: null
         }),
         ...updates
       }
     }));
   };
 
+  const fetchAircallTeamUsers = async (token) => {
+    const headers = {
+      Authorization: buildAircallAuthHeader(token, aircallAppId)
+    };
+    const normalizeTeamName = (name) => normalizeValue(name);
+
+    const teamsResponse = await fetch(`${AIRCALL_BASE_URL}/teams`, { headers });
+    if (!teamsResponse.ok) {
+      const errorText = await teamsResponse.text();
+      throw new Error(errorText || `Aircall teams request failed with ${teamsResponse.status}`);
+    }
+    const teamsData = await teamsResponse.json();
+    const teams = teamsData.teams || teamsData.data || [];
+    const targetTeam = teams.find(team => normalizeTeamName(team.name) === normalizeTeamName(AIRCALL_TEAM_NAME));
+
+    let users = targetTeam?.users || [];
+    if (!users.length) {
+      const usersResponse = await fetch(`${AIRCALL_BASE_URL}/users`, { headers });
+      if (!usersResponse.ok) {
+        const errorText = await usersResponse.text();
+        throw new Error(errorText || `Aircall users request failed with ${usersResponse.status}`);
+      }
+      const usersData = await usersResponse.json();
+      const allUsers = usersData.users || usersData.data || [];
+      if (targetTeam?.id) {
+        users = allUsers.filter(user => (user.teams || []).some(team => team.id === targetTeam.id));
+      } else {
+        users = allUsers.filter(user => (user.teams || []).some(team => normalizeTeamName(team.name) === normalizeTeamName(AIRCALL_TEAM_NAME)));
+      }
+    }
+
+    const cleanedUsers = users.map(user => ({
+      id: user.id,
+      name: user.name || user.email || user.username || `User ${user.id}`
+    }));
+
+    if (!cleanedUsers.length) {
+      throw new Error(`No users found in the ${AIRCALL_TEAM_NAME} team.`);
+    }
+    return cleanedUsers;
+  };
+
   const fetchAircallInteractions = async (client, options = {}) => {
     if (!client) return;
     const {
-      page = 1,
-      append = false,
       notify = true,
       token = aircallToken,
-      fetchAll = false,
       daysBack = 14,
-      perPage = 50
+      perPage = 25,
+      maxResults = 5
     } = options;
     if (!token || !aircallAppId) {
       updateAircallActivity(client.id, { error: 'Aircall credentials missing.', loading: false });
@@ -1421,17 +1499,21 @@ function App() {
       return { count: 0, error: 'No phone number on file.' };
     }
 
-    updateAircallActivity(client.id, { loading: true, error: null });
+    updateAircallActivity(client.id, { loading: true, error: null, hasRisk: false });
 
     try {
-      const toTimestamp = Math.floor(Date.now() / 1000);
-      const fromTimestamp = toTimestamp - daysBack * 24 * 60 * 60;
+      const { start, end } = getBrisbaneRange(daysBack);
+      const toTimestamp = Math.floor(end.getTime() / 1000);
+      const fromTimestamp = Math.floor(start.getTime() / 1000);
 
-      const fetchPage = async (pageNumber) => {
+      const teamUsers = await fetchAircallTeamUsers(token);
+
+      const fetchPage = async (user, pageNumber) => {
         const url = new URL(`${AIRCALL_BASE_URL}/calls`);
         url.searchParams.set('per_page', String(perPage));
         url.searchParams.set('page', String(pageNumber));
         url.searchParams.set('phone_number', phoneNumber);
+        url.searchParams.set('user_id', String(user.id));
         url.searchParams.set('from', String(fromTimestamp));
         url.searchParams.set('to', String(toTimestamp));
 
@@ -1450,47 +1532,33 @@ function App() {
       };
 
       let aggregated = [];
-      let nextPage = null;
-      let hasMore = false;
-      let currentPage = page;
 
-      if (fetchAll) {
-        let keepGoing = true;
-        while (keepGoing) {
-          const data = await fetchPage(currentPage);
+      const responses = await Promise.all(
+        teamUsers.map(async (user) => {
+          const data = await fetchPage(user, 1);
           const rawCalls = data.calls || data.data || [];
-          const mapped = rawCalls.map(call => ({
+          return rawCalls.map(call => ({
             id: call.id,
             duration: call.duration,
             direction: call.direction,
-            startedAt: call.started_at || call.created_at,
-            userName: call.user?.name || call.assigned_to?.name || call.user_name || call.from?.name || call.to?.name,
+            status: call.status || call.call_status || call.state,
+            disconnectedBy: call.disconnected_by || call.disconnectedBy,
+            startedAt: parseAircallTimestamp(call.started_at || call.startedAt || call.created_at || call.createdAt),
+            userName: call.user?.name || call.assigned_to?.name || call.user_name || user.name,
             fromNumber: call.from?.phone_number || call.from?.number,
             toNumber: call.to?.phone_number || call.to?.number,
+            recordingUrl: call.recording?.url || call.recording_url || call.links?.recording || call.links?.recording_url,
+            transcriptionUrl: call.transcription?.url || call.transcription_url || call.links?.transcription || call.links?.transcription_url,
             raw: call
           }));
-          aggregated = aggregated.concat(mapped);
-          nextPage = data.meta?.next_page || null;
-          hasMore = Boolean(nextPage);
-          currentPage = nextPage || currentPage + 1;
-          keepGoing = hasMore;
-        }
-      } else {
-        const data = await fetchPage(currentPage);
-        const rawCalls = data.calls || data.data || [];
-        aggregated = rawCalls.map(call => ({
-          id: call.id,
-          duration: call.duration,
-          direction: call.direction,
-          startedAt: call.started_at || call.created_at,
-          userName: call.user?.name || call.assigned_to?.name || call.user_name || call.from?.name || call.to?.name,
-          fromNumber: call.from?.phone_number || call.from?.number,
-          toNumber: call.to?.phone_number || call.to?.number,
-          raw: call
-        }));
-        nextPage = data.meta?.next_page || null;
-        hasMore = Boolean(nextPage);
-      }
+        })
+      );
+
+      aggregated = responses.flat();
+      aggregated = aggregated
+        .filter(call => call.startedAt)
+        .sort((a, b) => b.startedAt - a.startedAt)
+        .slice(0, maxResults);
 
       setAircallActivity(prev => {
         const existing = prev[client.id] || {
@@ -1498,18 +1566,22 @@ function App() {
           loading: false,
           error: null,
           nextPage: 1,
-          hasMore: false
+          hasMore: false,
+          hasRisk: false,
+          lastUpdated: null
         };
 
         return {
           ...prev,
           [client.id]: {
             ...existing,
-            items: append ? [...existing.items, ...aggregated] : aggregated,
+            items: aggregated,
             loading: false,
             error: null,
-            nextPage: nextPage || page + 1,
-            hasMore
+            nextPage: 1,
+            hasMore: false,
+            hasRisk: aggregated.length === 0,
+            lastUpdated: new Date().toISOString()
           }
         };
       });
@@ -1572,12 +1644,10 @@ function App() {
     setClientDetailTab('activity');
     if (!selectedClient) return;
     fetchAircallInteractions(selectedClient, {
-      page: 1,
-      append: false,
       notify: false,
-      fetchAll: true,
       daysBack: 14,
-      perPage: 50
+      perPage: 25,
+      maxResults: 5
     });
   };
 
@@ -2078,8 +2148,24 @@ function App() {
 
   const hasErrors = Object.keys(errorGroups).length > 0;
   const selectedActivity = selectedClient
-    ? (aircallActivity[selectedClient.id] || { items: [], loading: false, error: null, hasMore: false, nextPage: 1 })
-    : { items: [], loading: false, error: null, hasMore: false, nextPage: 1 };
+    ? (aircallActivity[selectedClient.id] || {
+      items: [],
+      loading: false,
+      error: null,
+      hasMore: false,
+      nextPage: 1,
+      hasRisk: false,
+      lastUpdated: null
+    })
+    : {
+      items: [],
+      loading: false,
+      error: null,
+      hasMore: false,
+      nextPage: 1,
+      hasRisk: false,
+      lastUpdated: null
+    };
   const selectedSubscriptions = selectedClient?.stripeSubscriptions || [];
   const selectedStripeProfile = selectedClient?.stripeProfile || null;
 
@@ -3047,6 +3133,11 @@ function App() {
                           <span className="tag-primary">
                             {selectedClient.service}
                           </span>
+                          {selectedActivity.hasRisk && !selectedActivity.loading && !selectedActivity.error && (
+                            <span className="tag-risk">
+                              <ShieldAlert size={14} /> Risk
+                            </span>
+                          )}
                           <span className="tag-secondary">
                             <DollarSign size={14} /> {selectedClient.budget}
                           </span>
@@ -3315,7 +3406,9 @@ function App() {
                       <div className="activity-summary">
                         <div>
                           <h3 className="section-label">Recent Activity for {selectedClient.phone || 'Unknown number'}</h3>
-                          <div className="login-helper">Showing {selectedActivity.items.length} interactions.</div>
+                          <div className="login-helper">
+                            Showing {selectedActivity.items.length} interaction{selectedActivity.items.length === 1 ? '' : 's'} from the last 14 days (Account Management team).
+                          </div>
                         </div>
                       </div>
 
@@ -3331,20 +3424,34 @@ function App() {
                             <div key={`${call.id}-${index}`} className="activity-card">
                               <div className="activity-header">
                                 <div className="activity-title">Call #{index + 1}</div>
-                                <span className="status-indicator status-active">{call.direction || 'Call'}</span>
+                                <span className="status-indicator status-active">{call.status || call.direction || 'Call'}</span>
                               </div>
                               <div className="activity-meta">
-                                <div><strong>Date:</strong> {formatDateTime(call.startedAt)}</div>
-                                <div><strong>Duration:</strong> {formatDuration(call.duration)}</div>
+                                <div><strong>Started at:</strong> {formatDateTime(call.startedAt)}</div>
+                                <div><strong>In call time:</strong> {formatDuration(call.duration)}</div>
                                 <div><strong>Caller:</strong> {call.userName || 'Unknown'}</div>
+                                <div><strong>Status:</strong> {call.status || 'Unknown'}</div>
+                                <div><strong>Disconnected by:</strong> {call.disconnectedBy || 'Unknown'}</div>
                                 <div><strong>From:</strong> {call.fromNumber || 'Unknown'} • <strong>To:</strong> {call.toNumber || 'Unknown'}</div>
+                              </div>
+                              <div className="activity-actions">
+                                {call.transcriptionUrl && (
+                                  <a className="activity-btn secondary" href={call.transcriptionUrl} target="_blank" rel="noreferrer">
+                                    <Eye size={16} /> Transcription
+                                  </a>
+                                )}
+                                {call.recordingUrl && (
+                                  <a className="activity-btn secondary" href={call.recordingUrl} target="_blank" rel="noreferrer">
+                                    <Play size={16} /> Recording
+                                  </a>
+                                )}
                               </div>
                             </div>
                           ))}
                         </div>
                       ) : (
                         !selectedActivity.loading && !selectedActivity.error && (
-                          <div className="activity-empty">No recent interactions have been loaded for this number yet.</div>
+                          <div className="activity-empty">No recent interactions were found for this number in the last 14 days.</div>
                         )
                       )}
 
