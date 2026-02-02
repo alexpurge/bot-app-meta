@@ -341,7 +341,16 @@ const STYLES = `
   .stripe-merge-card { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1rem; padding: 1.25rem; background: rgba(15, 23, 42, 0.6); display: grid; gap: 1rem; }
   .stripe-merge-card h4 { margin: 0; font-size: 1rem; color: var(--text-primary); }
   .stripe-merge-note { color: var(--text-secondary); font-size: 0.9rem; margin: 0; }
+  .stripe-subscription-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border-radius: 999px; background-color: #eef2ff; color: #4338ca; font-size: 0.7rem; font-weight: 700; }
+  .stripe-no-match { color: #94a3b8; font-size: 0.8rem; font-style: italic; }
+  .stripe-merge-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
+  .stripe-merge-card { border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; background: #ffffff; display: grid; gap: 1rem; }
+  .stripe-merge-card h4 { margin: 0; font-size: 1rem; color: #0f172a; }
+  .stripe-merge-note { color: #64748b; font-size: 0.9rem; margin: 0; }
   .stripe-merge-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+  .stripe-merge-search { min-width: min(320px, 100%); }
+  .stripe-search-input { width: 100%; padding: 0.6rem 0.85rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; font-size: 0.9rem; background-color: #ffffff; }
+  .stripe-search-input:focus { outline: none; border-color: #635bff; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15); }
 
   /* Aircall Login */
   .login-page { min-height: 100vh; background: var(--bg-dark); display: flex; align-items: center; justify-content: center; padding: 2rem; }
@@ -794,6 +803,7 @@ function App() {
     stripeCustomerId: '',
     clientId: ''
   });
+  const [stripeMergeSearch, setStripeMergeSearch] = useState('');
   const [stripeSyncStats, setStripeSyncStats] = useState({
     source: '',
     total: 0,
@@ -1190,6 +1200,11 @@ function App() {
     };
   };
 
+  const hasActiveStripeSubscriptions = (client) => (
+    Array.isArray(client.stripeSubscriptions)
+    && client.stripeSubscriptions.some(subscription => subscription.status === 'active')
+  );
+
   const openStripeSync = () => {
     setStripeApiKey('');
     setStripeMatches([]);
@@ -1293,6 +1308,24 @@ function App() {
   const stripeMatchedClientIds = new Set(stripeMatches.filter(match => match.client).map(match => match.client.id));
   const stripeUnmatchedCustomers = stripeMatches.filter(match => !match.client);
   const stripeUnmatchedClients = clients.filter(client => !stripeMatchedClientIds.has(client.id));
+
+  const normalizedStripeMergeSearch = stripeMergeSearch.trim().toLowerCase();
+  const stripeMergeSearchMatches = (value) => value?.toLowerCase().includes(normalizedStripeMergeSearch);
+  const filteredStripeUnmatchedCustomers = stripeUnmatchedCustomers.filter(match => (
+    !normalizedStripeMergeSearch
+    || stripeMergeSearchMatches(match.stripeCustomer?.name)
+    || stripeMergeSearchMatches(match.stripeCustomer?.company)
+    || stripeMergeSearchMatches(match.stripeCustomer?.email)
+    || stripeMergeSearchMatches(match.stripeCustomer?.phone)
+  ));
+  const filteredStripeUnmatchedClients = stripeUnmatchedClients.filter(client => (
+    !normalizedStripeMergeSearch
+    || stripeMergeSearchMatches(client.businessName)
+    || stripeMergeSearchMatches(client.contactName)
+    || stripeMergeSearchMatches(client.email)
+    || stripeMergeSearchMatches(client.phone)
+    || stripeMergeSearchMatches(client.location)
+  ));
 
   const handleStripeMergeSelection = (type, id) => {
     setStripeMergeSelection(prev => ({
@@ -2317,69 +2350,72 @@ function App() {
           {/* Tab Content */}
           {activeTab === 'Clients' ? (
             <div className="client-grid">
-              {filteredClients.map((client) => (
-                <div 
-                  key={client.id}
-                  onClick={() => {
-                    setSelectedClient(client);
-                    setIsEditing(false); 
-                    setIsDeleteConfirmOpen(false);
-                  }}
-                  className={`card ${selectedClientIds.has(client.id) ? 'selected' : ''}`}
-                >
-                  <div className="card-header">
-                    <div className="icon-box">
-                      <UserCircle size={24} />
+              {filteredClients.map((client) => {
+                const displayStatus = hasActiveStripeSubscriptions(client) ? 'Active' : client.status;
+                return (
+                  <div 
+                    key={client.id}
+                    onClick={() => {
+                      setSelectedClient(client);
+                      setIsEditing(false); 
+                      setIsDeleteConfirmOpen(false);
+                    }}
+                    className={`card ${selectedClientIds.has(client.id) ? 'selected' : ''}`}
+                  >
+                    <div className="card-header">
+                      <div className="icon-box">
+                        <UserCircle size={24} />
+                      </div>
+                      
+                      {/* Selection Checkbox */}
+                      <div 
+                        className={`card-select-checkbox ${selectedClientIds.has(client.id) ? 'checked' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelectClient(client.id);
+                        }}
+                      >
+                        {selectedClientIds.has(client.id) && <Check size={14} />}
+                      </div>
                     </div>
                     
-                    {/* Selection Checkbox */}
-                    <div 
-                      className={`card-select-checkbox ${selectedClientIds.has(client.id) ? 'checked' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSelectClient(client.id);
-                      }}
-                    >
-                      {selectedClientIds.has(client.id) && <Check size={14} />}
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <h3 className="card-title" style={{ marginRight: '0.5rem', flex: 1 }}>{client.businessName}</h3>
+                      {displayStatus && (
+                        <span className={`status-indicator status-${displayStatus.toLowerCase()}`}>
+                          {displayStatus}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
-                    <h3 className="card-title" style={{ marginRight: '0.5rem', flex: 1 }}>{client.businessName}</h3>
-                    {client.status && (
-                      <span className={`status-indicator status-${client.status.toLowerCase()}`}>
-                        {client.status}
-                      </span>
-                    )}
-                  </div>
 
-                  <p className="card-contact">
-                    <User size={14} /> {client.contactName}
-                  </p>
+                    <p className="card-contact">
+                      <User size={14} /> {client.contactName}
+                    </p>
 
-                  <div className="info-stack">
-                    <div className="info-row">
-                      <Mail size={16} className="info-icon" />
-                      <span className="text-truncate">{client.email}</span>
+                    <div className="info-stack">
+                      <div className="info-row">
+                        <Mail size={16} className="info-icon" />
+                        <span className="text-truncate">{client.email}</span>
+                      </div>
+                      <div className="info-row">
+                        <Phone size={16} className="info-icon" />
+                        <span>{client.phone}</span>
+                      </div>
+                      <div className="info-row">
+                        <MapPin size={16} className="info-icon" />
+                        <span className="text-truncate">{client.location}</span>
+                      </div>
                     </div>
-                    <div className="info-row">
-                      <Phone size={16} className="info-icon" />
-                      <span>{client.phone}</span>
-                    </div>
-                    <div className="info-row">
-                      <MapPin size={16} className="info-icon" />
-                      <span className="text-truncate">{client.location}</span>
+
+                    <div className="card-footer">
+                      <span className="service-tag">{client.service}</span>
+                      <button className="view-link">
+                        View Details <Eye size={16} />
+                      </button>
                     </div>
                   </div>
-
-                  <div className="card-footer">
-                    <span className="service-tag">{client.service}</span>
-                    <button className="view-link">
-                      View Details <Eye size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="empty-state">
@@ -2600,12 +2636,26 @@ function App() {
                       {stripeUnmatchedCustomers.length} Stripe customers without a client match · {stripeUnmatchedClients.length} client records without a Stripe match.
                     </p>
                   </div>
+                  <div className="stripe-merge-search">
+                    <input
+                      type="search"
+                      placeholder="Search clients or Stripe customers"
+                      className="stripe-search-input"
+                      value={stripeMergeSearch}
+                      onChange={(event) => setStripeMergeSearch(event.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="stripe-merge-grid">
                   <div className="stripe-merge-card">
                     <div>
                       <h4>Unmatched Stripe customers</h4>
-                      <p className="stripe-merge-note">Select one Stripe customer to pair with a client record.</p>
+                      <p className="stripe-merge-note">
+                        Select one Stripe customer to pair with a client record.
+                        {normalizedStripeMergeSearch && (
+                          <span className="stripe-merge-note"> Showing {filteredStripeUnmatchedCustomers.length} of {stripeUnmatchedCustomers.length}.</span>
+                        )}
+                      </p>
                     </div>
                     <div style={{ overflowX: 'auto', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
                       <table className="stripe-table">
@@ -2617,12 +2667,16 @@ function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {stripeUnmatchedCustomers.length === 0 ? (
+                          {filteredStripeUnmatchedCustomers.length === 0 ? (
                             <tr>
-                              <td colSpan="3" className="stripe-no-match">All Stripe customers have a client match.</td>
+                              <td colSpan="3" className="stripe-no-match">
+                                {stripeUnmatchedCustomers.length === 0
+                                  ? 'All Stripe customers have a client match.'
+                                  : 'No Stripe customers match your search.'}
+                              </td>
                             </tr>
                           ) : (
-                            stripeUnmatchedCustomers.map(match => (
+                            filteredStripeUnmatchedCustomers.map(match => (
                               <tr key={match.stripeCustomer.id}>
                                 <td>
                                   <div
@@ -2657,7 +2711,12 @@ function App() {
                   <div className="stripe-merge-card">
                     <div>
                       <h4>Unmatched client records</h4>
-                      <p className="stripe-merge-note">Select one client record to merge with the chosen Stripe customer.</p>
+                      <p className="stripe-merge-note">
+                        Select one client record to merge with the chosen Stripe customer.
+                        {normalizedStripeMergeSearch && (
+                          <span className="stripe-merge-note"> Showing {filteredStripeUnmatchedClients.length} of {stripeUnmatchedClients.length}.</span>
+                        )}
+                      </p>
                     </div>
                     <div style={{ overflowX: 'auto', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
                       <table className="stripe-table">
@@ -2669,12 +2728,16 @@ function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {stripeUnmatchedClients.length === 0 ? (
+                          {filteredStripeUnmatchedClients.length === 0 ? (
                             <tr>
-                              <td colSpan="3" className="stripe-no-match">All clients have a Stripe match.</td>
+                              <td colSpan="3" className="stripe-no-match">
+                                {stripeUnmatchedClients.length === 0
+                                  ? 'All clients have a Stripe match.'
+                                  : 'No client records match your search.'}
+                              </td>
                             </tr>
                           ) : (
-                            stripeUnmatchedClients.map(client => (
+                            filteredStripeUnmatchedClients.map(client => (
                               <tr key={client.id}>
                                 <td>
                                   <div
