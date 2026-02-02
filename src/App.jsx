@@ -41,6 +41,7 @@ import {
   ArrowRight,
   Eye
 } from './lucide-react';
+import MetaRiskEmbed from './MetaRiskEmbed';
 
 // --- CSS STYLES (Vanilla CSS) ---
 const STYLES = `
@@ -114,6 +115,11 @@ const STYLES = `
     position: relative; 
     background-color: var(--bg-dark); 
     width: 100%; /* Ensure it fills remaining flex space */
+  }
+
+  .main-content.meta-risk {
+    padding: 0;
+    overflow: hidden;
   }
   
   /* Sidebar Elements */
@@ -354,13 +360,13 @@ const STYLES = `
 
   /* Aircall Login */
   .login-page { min-height: 100vh; background: var(--bg-dark); display: flex; align-items: center; justify-content: center; padding: 2rem; }
-  .login-card { width: min(480px, 100%); background: var(--bg-panel); border-radius: 1.5rem; padding: 2.5rem; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(14px); }
-  .login-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
-  .login-logo img { width: 48px; height: 48px; background: var(--logo-bg); border-radius: 12px; padding: 0.35rem; }
-  .login-title { font-size: 2rem; font-weight: 800; color: var(--text-primary); margin: 0 0 0.5rem; }
+  .login-card { width: min(520px, 100%); background: rgba(15, 23, 42, 0.6); border-radius: 1.5rem; padding: 2.5rem; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.8); border: 1px solid var(--border-color); backdrop-filter: blur(14px); }
+  .login-logo { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+  .login-logo img { width: 64px; height: 64px; background: var(--logo-bg); border-radius: 16px; padding: 0.45rem; box-shadow: 0 10px 15px -3px rgba(255, 93, 0, 0.4); }
+  .login-title { font-size: 2.25rem; font-weight: 900; color: var(--text-primary); margin: 0 0 0.25rem; letter-spacing: -0.03em; }
   .login-subtitle { color: var(--text-secondary); margin: 0 0 1.5rem; line-height: 1.5; }
   .login-form { display: grid; gap: 1rem; }
-  .login-input { width: 100%; padding: 0.85rem 1rem; border-radius: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.12); background-color: rgba(0, 0, 0, 0.35); font-size: 1rem; color: var(--text-primary); }
+  .login-input { width: 100%; padding: 0.95rem 1rem; border-radius: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.12); background-color: rgba(0, 0, 0, 0.35); font-size: 1rem; color: var(--text-primary); }
   .login-input:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(255, 93, 0, 0.2); }
   .login-helper { font-size: 0.85rem; color: var(--text-muted); }
   .login-card .form-label { color: var(--text-secondary); }
@@ -456,6 +462,8 @@ const STYLES = `
 const AIRCALL_APP_ID = '827d006737dd9e69aaa89d6300a1a9f8';
 const AIRCALL_BASE_URL = 'https://api.aircall.io/v1';
 const AIRCALL_TEAM_NAME = 'Account Management';
+const META_ACCESS_TOKEN_KEY = 'metaAccessToken';
+const META_LOGO_URL = 'https://i.imgur.com/QjjDjuU.png';
 const BRISBANE_TIME_ZONE = 'Australia/Brisbane';
 
 // --- Seed Data ---
@@ -830,6 +838,9 @@ function App() {
   const [aircallTokenInput, setAircallTokenInput] = useState('');
   const [aircallAppIdInput, setAircallAppIdInput] = useState(() => localStorage.getItem('aircallAppId') || AIRCALL_APP_ID);
   const [isAircallLoggedIn, setIsAircallLoggedIn] = useState(() => Boolean(localStorage.getItem('aircallToken')));
+  const [metaAccessToken, setMetaAccessToken] = useState(() => localStorage.getItem(META_ACCESS_TOKEN_KEY) || '');
+  const [metaTokenInput, setMetaTokenInput] = useState(() => localStorage.getItem(META_ACCESS_TOKEN_KEY) || '');
+  const [isMetaLoggedIn, setIsMetaLoggedIn] = useState(() => Boolean(localStorage.getItem(META_ACCESS_TOKEN_KEY)));
   const [isSubmittingAircallToken, setIsSubmittingAircallToken] = useState(false);
   const [aircallActivity, setAircallActivity] = useState({});
   const [toast, setToast] = useState(null);
@@ -1603,6 +1614,7 @@ function App() {
     event.preventDefault();
     const trimmedToken = aircallTokenInput.trim();
     const trimmedAppId = aircallAppIdInput.trim();
+    const trimmedMetaToken = metaTokenInput.trim();
     if (!trimmedAppId) {
       showToast('error', 'App ID required', 'Enter your Aircall App ID to continue.');
       return;
@@ -1611,16 +1623,24 @@ function App() {
       showToast('error', 'Token required', 'Enter your Aircall API token to continue.');
       return;
     }
+    if (!trimmedMetaToken) {
+      showToast('error', 'Meta token required', 'Enter your Meta system user token to continue.');
+      return;
+    }
 
     setIsSubmittingAircallToken(true);
     try {
       localStorage.setItem('aircallToken', trimmedToken);
       localStorage.setItem('aircallAppId', trimmedAppId);
+      localStorage.setItem(META_ACCESS_TOKEN_KEY, trimmedMetaToken);
       setAircallToken(trimmedToken);
       setAircallAppId(trimmedAppId);
       setIsAircallLoggedIn(true);
+      setMetaAccessToken(trimmedMetaToken);
+      setIsMetaLoggedIn(true);
       setAircallTokenInput('');
       setAircallAppIdInput(trimmedAppId);
+      setMetaTokenInput('');
     } catch (error) {
       showToast('error', 'Aircall login failed', error.message);
     } finally {
@@ -1631,6 +1651,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('aircallToken');
     localStorage.removeItem('aircallAppId');
+    localStorage.removeItem(META_ACCESS_TOKEN_KEY);
     setAircallToken('');
     setAircallAppId('');
     setAircallTokenInput('');
@@ -1638,6 +1659,9 @@ function App() {
     setAircallActivity({});
     setSelectedClient(null);
     setIsAircallLoggedIn(false);
+    setMetaAccessToken('');
+    setMetaTokenInput('');
+    setIsMetaLoggedIn(false);
   };
 
   const handleRecentActivityClick = () => {
@@ -2168,6 +2192,7 @@ function App() {
     };
   const selectedSubscriptions = selectedClient?.stripeSubscriptions || [];
   const selectedStripeProfile = selectedClient?.stripeProfile || null;
+  const isLoggedIn = isAircallLoggedIn && isMetaLoggedIn;
 
   return (
     <>
@@ -2183,14 +2208,14 @@ function App() {
         </div>
       )}
 
-      {!isAircallLoggedIn ? (
+      {!isLoggedIn ? (
         <div className="login-page">
           <div className="login-card">
             <div className="login-logo">
-              <img src={purgeLogo} alt="PurgeDigital logo" />
+              <img src={META_LOGO_URL} alt="Purge Digital logo" />
               <div>
                 <h1 className="login-title">PurgeDigital CRM</h1>
-                <p className="login-subtitle">Connect your Aircall workspace to unlock recent client activity.</p>
+                <p className="login-subtitle">Connect Aircall and Meta to unlock CRM activity and Meta Risk insights.</p>
               </div>
             </div>
             <form className="login-form" onSubmit={handleAircallLogin}>
@@ -2218,8 +2243,20 @@ function App() {
                 />
                 <div className="login-helper">Your App ID is stored locally in this browser only.</div>
               </div>
+              <div>
+                <label className="form-label" htmlFor="metaAccessToken">Meta System User Token</label>
+                <input
+                  id="metaAccessToken"
+                  type="password"
+                  className="login-input"
+                  value={metaTokenInput}
+                  onChange={(event) => setMetaTokenInput(event.target.value)}
+                  placeholder="Paste your Meta system user token"
+                />
+                <div className="login-helper">Your Meta token is stored locally in this browser only.</div>
+              </div>
               <button className="login-btn" type="submit" disabled={isSubmittingAircallToken}>
-                {isSubmittingAircallToken ? 'Connecting to Aircall…' : 'Connect Aircall'}
+                {isSubmittingAircallToken ? 'Initializing workspace…' : 'Initialize Workspace'}
                 {isSubmittingAircallToken && (
                   <span className="login-btn-loading-bar" />
                 )}
@@ -2323,122 +2360,125 @@ function App() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="main-content">
+        <main className={`main-content ${activeTab === 'Meta Risk' ? 'meta-risk' : ''}`}>
           
           {/* Header */}
-          <header className="header-area">
-            <div>
-              <h2 className="page-title">
-                {activeTab === 'Clients' && 'Client Database'}
-                {activeTab === 'Leads' && 'Lead Management'}
-                {activeTab === 'Services' && 'Service Catalog'}
-                {activeTab === 'Meta Risk' && 'Meta Risk Analysis'}
-                {activeTab === 'Google Risk' && 'Google Risk Assessment'}
-              </h2>
-              <p className="page-subtitle">
-                {activeTab === 'Clients' ? `${clients.length} Active Accounts` : 'Module Active'}
-              </p>
-            </div>
-            
-            <div className="controls">
-              {activeTab === 'Clients' && (
-                <>
-                  <div className="search-wrapper">
-                    <Search className="search-icon" size={20} />
-                    <input 
-                      type="text" 
-                      placeholder="Search..." 
-                      className="search-input"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="controls-actions">
-                    {selectedClientIds.size > 0 ? (
-                      <>
-                        <button onClick={selectAll} className="btn-secondary" title="Select All in View">
-                          <CheckSquare size={18} /> Select All
+          {activeTab !== 'Meta Risk' && (
+            <header className="header-area">
+              <div>
+                <h2 className="page-title">
+                  {activeTab === 'Clients' && 'Client Database'}
+                  {activeTab === 'Leads' && 'Lead Management'}
+                  {activeTab === 'Services' && 'Service Catalog'}
+                  {activeTab === 'Google Risk' && 'Google Risk Assessment'}
+                </h2>
+                <p className="page-subtitle">
+                  {activeTab === 'Clients' ? `${clients.length} Active Accounts` : 'Module Active'}
+                </p>
+              </div>
+              
+              <div className="controls">
+                {activeTab === 'Clients' && (
+                  <>
+                    <div className="search-wrapper">
+                      <Search className="search-icon" size={20} />
+                      <input 
+                        type="text" 
+                        placeholder="Search..." 
+                        className="search-input"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="controls-actions">
+                      {selectedClientIds.size > 0 ? (
+                        <>
+                          <button onClick={selectAll} className="btn-secondary" title="Select All in View">
+                            <CheckSquare size={18} /> Select All
+                          </button>
+                          <div className="custom-select-wrapper">
+                            <select 
+                              className="custom-select"
+                              style={{ minWidth: '140px' }}
+                              value={bulkActionType}
+                              onChange={(e) => setBulkActionType(e.target.value)}
+                            >
+                              <option value="">Bulk Actions...</option>
+                              <option value="Active">Set Active</option>
+                              <option value="Paused">Set Paused</option>
+                              <option value="Cancelled">Set Cancelled</option>
+                              <option value="delete">Delete Selected</option>
+                            </select>
+                            <ChevronDown className="custom-select-arrow" size={16} />
+                          </div>
+                          <button onClick={applyBulkAction} className="btn-primary" disabled={!bulkActionType}>
+                            Submit <ArrowRight size={16} />
+                          </button>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b', alignSelf: 'center', marginLeft: '0.5rem' }}>
+                            {selectedClientIds.size} Selected
+                          </span>
+                        </>
+                      ) : (
+                        <button 
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="btn-primary"
+                        >
+                          <Plus size={20} />
+                          <span>Add New</span>
                         </button>
+                      )}
+                      <button onClick={openStripeSync} className="btn-stripe">
+                        <Play size={18} />
+                        <span>Sync with Stripe</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === 'Google Risk' && (
+                  <div className="risk-controls">
+                    <button className="btn-secondary">
+                      <ShieldCheck size={18} /> Show Risk
+                    </button>
+                    <div className="risk-filter-card">
+                      <div className="risk-filter-meta">
+                        <span className="risk-filter-label">Risk Filter</span>
                         <div className="custom-select-wrapper">
-                          <select 
+                          <select
                             className="custom-select"
-                            style={{ minWidth: '140px' }}
-                            value={bulkActionType}
-                            onChange={(e) => setBulkActionType(e.target.value)}
+                            value={riskFilterDraft}
+                            onChange={(e) => setRiskFilterDraft(e.target.value)}
                           >
-                            <option value="">Bulk Actions...</option>
-                            <option value="Active">Set Active</option>
-                            <option value="Paused">Set Paused</option>
-                            <option value="Cancelled">Set Cancelled</option>
-                            <option value="delete">Delete Selected</option>
+                            <option value="">Select Filter</option>
+                            <option value="CPA">CPA</option>
+                            <option value="Creative">Creative</option>
                           </select>
                           <ChevronDown className="custom-select-arrow" size={16} />
                         </div>
-                        <button onClick={applyBulkAction} className="btn-primary" disabled={!bulkActionType}>
-                          Submit <ArrowRight size={16} />
-                        </button>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b', alignSelf: 'center', marginLeft: '0.5rem' }}>
-                          {selectedClientIds.size} Selected
+                      </div>
+                      {riskFilter && (
+                        <span className="risk-filter-pill">
+                          <Filter size={14} /> {riskFilter}
                         </span>
-                      </>
-                    ) : (
-                      <button 
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="btn-primary"
-                      >
-                        <Plus size={20} />
-                        <span>Add New</span>
-                      </button>
-                    )}
-                    <button onClick={openStripeSync} className="btn-stripe">
-                      <Play size={18} />
-                      <span>Sync with Stripe</span>
+                      )}
+                    </div>
+                    <button
+                      className="btn-primary"
+                      onClick={() => setRiskFilter(riskFilterDraft)}
+                      disabled={!riskFilterDraft}
+                    >
+                      Apply <ArrowRight size={16} />
                     </button>
                   </div>
-                </>
-              )}
-
-              {(activeTab === 'Meta Risk' || activeTab === 'Google Risk') && (
-                <div className="risk-controls">
-                  <button className="btn-secondary">
-                    {activeTab === 'Google Risk' ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />} Show Risk
-                  </button>
-                  <div className="risk-filter-card">
-                    <div className="risk-filter-meta">
-                      <span className="risk-filter-label">Risk Filter</span>
-                      <div className="custom-select-wrapper">
-                        <select
-                          className="custom-select"
-                          value={riskFilterDraft}
-                          onChange={(e) => setRiskFilterDraft(e.target.value)}
-                        >
-                          <option value="">Select Filter</option>
-                          <option value="CPA">CPA</option>
-                          <option value="Creative">Creative</option>
-                        </select>
-                        <ChevronDown className="custom-select-arrow" size={16} />
-                      </div>
-                    </div>
-                    {riskFilter && (
-                      <span className="risk-filter-pill">
-                        <Filter size={14} /> {riskFilter}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    className="btn-primary"
-                    onClick={() => setRiskFilter(riskFilterDraft)}
-                    disabled={!riskFilterDraft}
-                  >
-                    Apply <ArrowRight size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </header>
+                )}
+              </div>
+            </header>
+          )}
 
           {/* Tab Content */}
-          {activeTab === 'Clients' ? (
+          {activeTab === 'Meta Risk' ? (
+            <MetaRiskEmbed accessToken={metaAccessToken} onLogout={handleLogout} />
+          ) : activeTab === 'Clients' ? (
             <div className="client-grid">
               {filteredClients.map((client) => {
                 const displayStatus = hasActiveStripeSubscriptions(client) ? 'Active' : client.status;
@@ -2510,8 +2550,7 @@ function App() {
           ) : (
             <div className="empty-state">
               <div style={{ width: '80px', height: '80px', backgroundColor: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-                {activeTab === 'Meta Risk' ? <ShieldAlert size={40} color="#ff5d00" /> : 
-                 activeTab === 'Google Risk' ? <ShieldCheck size={40} color="#ff5d00" /> : 
+                {activeTab === 'Google Risk' ? <ShieldCheck size={40} color="#ff5d00" /> : 
                  <Briefcase size={40} color="#cbd5e1" />}
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#334155', marginBottom: '0.5rem' }}>{activeTab} Dashboard</h3>
