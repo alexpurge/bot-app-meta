@@ -279,15 +279,16 @@ const STYLES = `
 
   /* Aircall Login */
   .login-page { min-height: 100vh; background: #0b0b0b; display: flex; align-items: center; justify-content: center; padding: 2rem; }
-  .login-card { width: min(480px, 100%); background: rgba(255, 255, 255, 0.98); border-radius: 1.5rem; padding: 2.5rem; box-shadow: 0 40px 80px -30px rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.4); }
+  .login-card { width: min(480px, 100%); background: #1c1c1c; border-radius: 1.5rem; padding: 2.5rem; box-shadow: 0 40px 80px -30px rgba(5, 5, 5, 0.75); border: 1px solid #2a2a2a; }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
   .login-logo img { width: 48px; height: 48px; }
-  .login-title { font-size: 2rem; font-weight: 800; color: #0f172a; margin: 0 0 0.5rem; }
-  .login-subtitle { color: #475569; margin: 0 0 1.5rem; line-height: 1.5; }
+  .login-title { font-size: 2rem; font-weight: 800; color: #f8fafc; margin: 0 0 0.5rem; }
+  .login-subtitle { color: #cbd5e1; margin: 0 0 1.5rem; line-height: 1.5; }
   .login-form { display: grid; gap: 1rem; }
   .login-input { width: 100%; padding: 0.85rem 1rem; border-radius: 0.85rem; border: 1px solid #e2e8f0; background-color: #f8fafc; font-size: 1rem; }
   .login-input:focus { outline: none; border-color: #ff5d00; box-shadow: 0 0 0 3px rgba(255, 93, 0, 0.15); }
-  .login-helper { font-size: 0.85rem; color: #64748b; }
+  .login-helper { font-size: 0.85rem; color: #94a3b8; }
+  .login-card .form-label { color: #e2e8f0; }
   .login-btn { position: relative; overflow: hidden; width: 100%; border: none; border-radius: 0.9rem; background: linear-gradient(135deg, #ff5d00 0%, #ff7a1a 100%); color: white; font-weight: 700; padding: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
   .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
   .login-btn-loading-bar { position: absolute; left: 0; bottom: 0; height: 4px; background-color: rgba(255, 255, 255, 0.75); animation: loadingSlide 1s infinite linear; }
