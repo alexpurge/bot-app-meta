@@ -323,52 +323,6 @@ const STYLES = `
   .activity-btn.secondary { background: #f1f5f9; color: #475569; }
   .activity-empty { text-align: center; padding: 2rem 1rem; color: #94a3b8; background: #f8fafc; border-radius: 0.85rem; border: 1px dashed #e2e8f0; }
 
-  /* Aircall Scan Indicator */
-  .scan-indicator {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.45rem 0.75rem;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #0f172a, #1f2937);
-    color: #f8fafc;
-    min-width: 120px;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 18px -12px rgba(15, 23, 42, 0.65);
-  }
-
-  .scan-indicator-label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #f8fafc;
-  }
-
-  .scan-indicator-bar {
-    width: 100%;
-    height: 4px;
-    border-radius: 999px;
-    background-color: rgba(248, 250, 252, 0.2);
-    overflow: hidden;
-  }
-
-  .scan-indicator-bar-fill {
-    display: block;
-    height: 100%;
-    width: 40%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(255, 93, 0, 0.5), #ff5d00, rgba(255, 93, 0, 0.6));
-    animation: scanPulse 1.4s ease-in-out infinite;
-  }
-
-  @keyframes scanPulse {
-    0% { transform: translateX(-120%); opacity: 0.2; }
-    50% { opacity: 1; }
-    100% { transform: translateX(220%); opacity: 0.2; }
-  }
-
   /* Error Grouping Styles */
   .error-group { margin-bottom: 1.5rem; border: 1px solid #fecaca; border-radius: 0.5rem; overflow: hidden; }
   .error-group-header { background-color: #fef2f2; padding: 0.75rem 1rem; font-weight: 700; color: #b91c1c; display: flex; align-items: center; gap: 0.5rem; }
@@ -772,14 +726,6 @@ function App() {
   const [aircallActivity, setAircallActivity] = useState({});
   const [toast, setToast] = useState(null);
   const [clientDetailTab, setClientDetailTab] = useState('overview');
-  const [aircallScanState, setAircallScanState] = useState({
-    active: false,
-    currentClientId: null,
-    inFlight: false,
-    lastCompletedAt: null
-  });
-  const aircallScanIndexRef = useRef(0);
-  const aircallScanInFlightRef = useRef(false);
 
   // Import Review State
   const [isImportReviewOpen, setIsImportReviewOpen] = useState(false);
@@ -806,58 +752,6 @@ function App() {
     }
   }, [selectedClient]);
 
-  useEffect(() => {
-    if (!isAircallLoggedIn || !aircallToken || !aircallAppId) {
-      aircallScanInFlightRef.current = false;
-      setAircallScanState({
-        active: false,
-        currentClientId: null,
-        inFlight: false,
-        lastCompletedAt: null
-      });
-      return;
-    }
-
-    const interval = setInterval(async () => {
-      if (aircallScanInFlightRef.current) return;
-
-      const queue = clients.filter(client => normalizePhoneNumber(client.phone));
-      if (queue.length === 0) return;
-
-      const target = queue[aircallScanIndexRef.current % queue.length];
-      aircallScanInFlightRef.current = true;
-      setAircallScanState(prev => ({
-        ...prev,
-        active: true,
-        currentClientId: target.id,
-        inFlight: true
-      }));
-      const result = await fetchAircallInteractions(target, {
-        page: 1,
-        append: false,
-        notify: false,
-        fetchAll: true,
-        daysBack: 14,
-        perPage: 50
-      });
-
-      if (result?.error) {
-        showToast('error', 'Aircall scan failed', result.error);
-      }
-
-      aircallScanIndexRef.current = (aircallScanIndexRef.current + 1) % queue.length;
-      aircallScanInFlightRef.current = false;
-      setAircallScanState(prev => ({
-        ...prev,
-        active: true,
-        currentClientId: null,
-        inFlight: false,
-        lastCompletedAt: new Date().toISOString()
-      }));
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [aircallAppId, aircallToken, clients, isAircallLoggedIn]);
 
   // Form State
   const [newClient, setNewClient] = useState({
@@ -1093,6 +987,19 @@ function App() {
     setAircallActivity({});
     setSelectedClient(null);
     setIsAircallLoggedIn(false);
+  };
+
+  const handleRecentActivityClick = () => {
+    setClientDetailTab('activity');
+    if (!selectedClient) return;
+    fetchAircallInteractions(selectedClient, {
+      page: 1,
+      append: false,
+      notify: false,
+      fetchAll: true,
+      daysBack: 14,
+      perPage: 50
+    });
   };
 
   const handleAddSubmit = (e) => {
@@ -1779,15 +1686,6 @@ function App() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  {isAircallLoggedIn && (
-                    <div className="scan-indicator" aria-live="polite">
-                      <span className="scan-indicator-label">Scanning</span>
-                      <div className="scan-indicator-bar">
-                        <span className="scan-indicator-bar-fill" />
-                      </div>
-                    </div>
-                  )}
-
                   {selectedClientIds.size > 0 ? (
                     <>
                       <button onClick={selectAll} className="btn-secondary" title="Select All in View">
@@ -2240,7 +2138,7 @@ function App() {
                     </button>
                     <button
                       className={`detail-tab ${clientDetailTab === 'activity' ? 'active' : ''}`}
-                      onClick={() => setClientDetailTab('activity')}
+                      onClick={handleRecentActivityClick}
                     >
                       Recent Activity
                     </button>
