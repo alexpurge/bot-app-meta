@@ -277,6 +277,51 @@ const STYLES = `
   .action-btn-mini { padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; background-color: #fff7ed; color: #ff5d00; transition: all 0.2s; margin-top: 0.25rem; }
   .action-btn-mini:hover { background-color: #ffedd5; }
 
+  /* Aircall Login */
+  .login-page { min-height: 100vh; background: radial-gradient(circle at top, rgba(255, 93, 0, 0.15), transparent 55%), linear-gradient(140deg, #0f172a 0%, #111827 45%, #1f2937 100%); display: flex; align-items: center; justify-content: center; padding: 2rem; }
+  .login-card { width: min(480px, 100%); background: rgba(255, 255, 255, 0.98); border-radius: 1.5rem; padding: 2.5rem; box-shadow: 0 40px 80px -30px rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.4); }
+  .login-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .login-logo img { width: 48px; height: 48px; }
+  .login-title { font-size: 2rem; font-weight: 800; color: #0f172a; margin: 0 0 0.5rem; }
+  .login-subtitle { color: #475569; margin: 0 0 1.5rem; line-height: 1.5; }
+  .login-form { display: grid; gap: 1rem; }
+  .login-input { width: 100%; padding: 0.85rem 1rem; border-radius: 0.85rem; border: 1px solid #e2e8f0; background-color: #f8fafc; font-size: 1rem; }
+  .login-input:focus { outline: none; border-color: #ff5d00; box-shadow: 0 0 0 3px rgba(255, 93, 0, 0.15); }
+  .login-helper { font-size: 0.85rem; color: #64748b; }
+  .login-btn { position: relative; overflow: hidden; width: 100%; border: none; border-radius: 0.9rem; background: linear-gradient(135deg, #ff5d00 0%, #ff7a1a 100%); color: white; font-weight: 700; padding: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+  .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+  .login-btn-loading-bar { position: absolute; left: 0; bottom: 0; height: 4px; background-color: rgba(255, 255, 255, 0.75); animation: loadingSlide 1s infinite linear; }
+
+  /* Global Loading Bar */
+  .global-loading { position: sticky; top: 0; z-index: 30; background-color: #0f172a; border-radius: 999px; overflow: hidden; height: 6px; margin-bottom: 1rem; }
+  .global-loading-bar { height: 100%; background: linear-gradient(90deg, #ff5d00, #ffd08a); transition: width 0.3s ease; }
+  .global-loading-label { font-size: 0.75rem; color: #64748b; margin-bottom: 0.35rem; }
+
+  /* Notifications */
+  .toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+  .toast { min-width: 260px; max-width: 360px; padding: 0.85rem 1rem; border-radius: 0.85rem; box-shadow: 0 15px 30px -15px rgba(15, 23, 42, 0.35); background: white; border-left: 4px solid #64748b; animation: slideInRight 0.25s ease; }
+  .toast.success { border-left-color: #16a34a; }
+  .toast.error { border-left-color: #ef4444; }
+  .toast-title { font-weight: 700; color: #0f172a; margin-bottom: 0.25rem; }
+  .toast-message { font-size: 0.85rem; color: #475569; line-height: 1.4; }
+
+  /* Detail Tabs */
+  .detail-tabs { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; border-bottom: 1px solid #e2e8f0; }
+  .detail-tab { padding: 0.5rem 1rem; border-radius: 0.75rem 0.75rem 0 0; background: transparent; border: none; font-weight: 700; color: #94a3b8; cursor: pointer; }
+  .detail-tab.active { color: #ff5d00; border-bottom: 3px solid #ff5d00; background: #fff7ed; }
+
+  /* Recent Activity */
+  .activity-summary { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .activity-list { display: grid; gap: 0.75rem; }
+  .activity-card { border: 1px solid #e2e8f0; border-radius: 0.85rem; padding: 1rem; background: #ffffff; display: grid; gap: 0.5rem; }
+  .activity-header { display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; }
+  .activity-title { font-weight: 700; color: #0f172a; }
+  .activity-meta { font-size: 0.85rem; color: #64748b; display: grid; gap: 0.25rem; }
+  .activity-actions { display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+  .activity-btn { border: none; border-radius: 0.75rem; padding: 0.65rem 1rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; background: #0f172a; color: white; }
+  .activity-btn.secondary { background: #f1f5f9; color: #475569; }
+  .activity-empty { text-align: center; padding: 2rem 1rem; color: #94a3b8; background: #f8fafc; border-radius: 0.85rem; border: 1px dashed #e2e8f0; }
+
   /* Error Grouping Styles */
   .error-group { margin-bottom: 1.5rem; border: 1px solid #fecaca; border-radius: 0.5rem; overflow: hidden; }
   .error-group-header { background-color: #fef2f2; padding: 0.75rem 1rem; font-weight: 700; color: #b91c1c; display: flex; align-items: center; gap: 0.5rem; }
@@ -315,7 +360,12 @@ const STYLES = `
   /* Animations */
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes loadingSlide { 0% { width: 0; } 100% { width: 100%; } }
+  @keyframes slideInRight { from { transform: translateX(12px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 `;
+
+const AIRCALL_APP_ID = 'OFFERUP_APP_ID';
+const AIRCALL_BASE_URL = 'https://api.aircall.io/v1';
 
 // --- Seed Data ---
 const SEED_DATA = [
@@ -666,6 +716,18 @@ function App() {
   const [editingClient, setEditingClient] = useState(null);
   const fileInputRef = useRef(null);
 
+  // Aircall Auth & Activity
+  const [aircallToken, setAircallToken] = useState(() => localStorage.getItem('aircallToken') || '');
+  const [aircallTokenInput, setAircallTokenInput] = useState('');
+  const [isAircallLoggedIn, setIsAircallLoggedIn] = useState(() => Boolean(localStorage.getItem('aircallToken')));
+  const [isSubmittingAircallToken, setIsSubmittingAircallToken] = useState(false);
+  const [isInitializingAircall, setIsInitializingAircall] = useState(false);
+  const [initProgress, setInitProgress] = useState({ current: 0, total: 0 });
+  const [aircallActivity, setAircallActivity] = useState({});
+  const [toast, setToast] = useState(null);
+  const [clientDetailTab, setClientDetailTab] = useState('overview');
+  const [hasInitializedAircall, setHasInitializedAircall] = useState(false);
+
   // Import Review State
   const [isImportReviewOpen, setIsImportReviewOpen] = useState(false);
   const [importReviewTab, setImportReviewTab] = useState('list'); // 'list' or 'errors'
@@ -677,6 +739,26 @@ function App() {
   useEffect(() => {
     localStorage.setItem('purgeClients', JSON.stringify(clients));
   }, [clients]);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (selectedClient) {
+      setClientDetailTab('overview');
+    }
+  }, [selectedClient]);
+
+  useEffect(() => {
+    if (aircallToken && isAircallLoggedIn && !hasInitializedAircall && !isSubmittingAircallToken) {
+      setHasInitializedAircall(true);
+      initializeAircall(aircallToken);
+    }
+  }, [aircallToken, isAircallLoggedIn, hasInitializedAircall, isSubmittingAircallToken]);
 
   // Form State
   const [newClient, setNewClient] = useState({
@@ -693,6 +775,186 @@ function App() {
     access: '',
     status: 'Active'
   });
+
+  const showToast = (type, title, message) => {
+    setToast({ type, title, message });
+  };
+
+  const formatDuration = (seconds) => {
+    if (seconds === null || seconds === undefined) return 'Unknown duration';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins === 0) return `${secs}s`;
+    return `${mins}m ${secs}s`;
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return 'Unknown date';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Unknown date';
+    return date.toLocaleString();
+  };
+
+  const normalizePhoneNumber = (phone) => {
+    if (!phone) return '';
+    return phone.replace(/[^\d+]/g, '');
+  };
+
+  const buildAircallAuthHeader = (tokenOverride) => {
+    const credentials = btoa(`${AIRCALL_APP_ID}:${tokenOverride}`);
+    return `Basic ${credentials}`;
+  };
+
+  const updateAircallActivity = (clientId, updates) => {
+    setAircallActivity(prev => ({
+      ...prev,
+      [clientId]: {
+        ...(prev[clientId] || {
+          items: [],
+          loading: false,
+          error: null,
+          nextPage: 1,
+          hasMore: false
+        }),
+        ...updates
+      }
+    }));
+  };
+
+  const fetchAircallInteractions = async (client, options = {}) => {
+    if (!client) return;
+    const { page = 1, append = false, notify = true, token = aircallToken } = options;
+    if (!token) {
+      updateAircallActivity(client.id, { error: 'Aircall token missing.', loading: false });
+      if (notify) {
+        showToast('error', 'Aircall token missing', 'Add your Aircall API token to load activity.');
+      }
+      return;
+    }
+
+    const phoneNumber = normalizePhoneNumber(client.phone);
+    if (!phoneNumber) {
+      updateAircallActivity(client.id, { error: 'No phone number on file.', loading: false });
+      if (notify) {
+        showToast('error', 'Missing phone number', 'This client does not have a phone number to query.');
+      }
+      return;
+    }
+
+    updateAircallActivity(client.id, { loading: true, error: null });
+
+    try {
+      const url = new URL(`${AIRCALL_BASE_URL}/calls`);
+      url.searchParams.set('per_page', '5');
+      url.searchParams.set('page', String(page));
+      url.searchParams.set('phone_number', phoneNumber);
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          Authorization: buildAircallAuthHeader(token)
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `Aircall request failed with ${response.status}`);
+      }
+
+      const data = await response.json();
+      const rawCalls = data.calls || data.data || [];
+      const mapped = rawCalls.map(call => ({
+        id: call.id,
+        duration: call.duration,
+        direction: call.direction,
+        startedAt: call.started_at || call.created_at,
+        userName: call.user?.name || call.assigned_to?.name || call.user_name || call.from?.name || call.to?.name,
+        fromNumber: call.from?.phone_number || call.from?.number,
+        toNumber: call.to?.phone_number || call.to?.number,
+        raw: call
+      }));
+
+      const nextPage = data.meta?.next_page || null;
+      const hasMore = Boolean(nextPage);
+
+      setAircallActivity(prev => {
+        const existing = prev[client.id] || {
+          items: [],
+          loading: false,
+          error: null,
+          nextPage: 1,
+          hasMore: false
+        };
+
+        return {
+          ...prev,
+          [client.id]: {
+            ...existing,
+            items: append ? [...existing.items, ...mapped] : mapped,
+            loading: false,
+            error: null,
+            nextPage: nextPage || page + 1,
+            hasMore
+          }
+        };
+      });
+
+      if (notify) {
+        showToast('success', 'Aircall activity loaded', `Fetched ${mapped.length} interactions for ${client.businessName}.`);
+      }
+    } catch (error) {
+      updateAircallActivity(client.id, { loading: false, error: error.message });
+      if (notify) {
+        showToast('error', 'Aircall request failed', error.message);
+      }
+    }
+  };
+
+  const initializeAircall = async (token) => {
+    const clientsWithPhones = clients.filter(client => client.phone);
+    setIsInitializingAircall(true);
+    setInitProgress({ current: 0, total: clientsWithPhones.length });
+
+    let failures = 0;
+    for (const client of clientsWithPhones) {
+      try {
+        await fetchAircallInteractions(client, { page: 1, append: false, notify: false, token });
+      } catch {
+        failures += 1;
+      } finally {
+        setInitProgress(prev => ({ ...prev, current: prev.current + 1 }));
+      }
+    }
+
+    setIsInitializingAircall(false);
+    if (failures > 0) {
+      showToast('error', 'Aircall initialization incomplete', `${failures} client syncs did not complete. Review the recent activity tab for details.`);
+    } else {
+      showToast('success', 'Aircall connected', 'All client phone histories are ready.');
+    }
+  };
+
+  const handleAircallLogin = async (event) => {
+    event.preventDefault();
+    const trimmedToken = aircallTokenInput.trim();
+    if (!trimmedToken) {
+      showToast('error', 'Token required', 'Enter your Aircall API token to continue.');
+      return;
+    }
+
+    setIsSubmittingAircallToken(true);
+    try {
+      localStorage.setItem('aircallToken', trimmedToken);
+      setAircallToken(trimmedToken);
+      setIsAircallLoggedIn(true);
+      setHasInitializedAircall(true);
+      await initializeAircall(trimmedToken);
+      setAircallTokenInput('');
+    } catch (error) {
+      showToast('error', 'Aircall login failed', error.message);
+    } finally {
+      setIsSubmittingAircallToken(false);
+    }
+  };
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
@@ -1135,13 +1397,70 @@ function App() {
   }, {});
 
   const hasErrors = Object.keys(errorGroups).length > 0;
+  const initPercent = initProgress.total ? Math.round((initProgress.current / initProgress.total) * 100) : 0;
+  const selectedActivity = selectedClient
+    ? (aircallActivity[selectedClient.id] || { items: [], loading: false, error: null, hasMore: false, nextPage: 1 })
+    : { items: [], loading: false, error: null, hasMore: false, nextPage: 1 };
 
   return (
     <>
       {/* Inject Styles */}
       <style>{STYLES}</style>
 
-      <div className="app-container">
+      {toast && (
+        <div className="toast-container">
+          <div className={`toast ${toast.type}`}>
+            <div className="toast-title">{toast.title}</div>
+            <div className="toast-message">{toast.message}</div>
+          </div>
+        </div>
+      )}
+
+      {!isAircallLoggedIn ? (
+        <div className="login-page">
+          <div className="login-card">
+            <div className="login-logo">
+              <img src={purgeLogo} alt="PurgeDigital logo" />
+              <div>
+                <h1 className="login-title">PurgeDigital CRM</h1>
+                <p className="login-subtitle">Connect your Aircall workspace to unlock recent client activity.</p>
+              </div>
+            </div>
+            <form className="login-form" onSubmit={handleAircallLogin}>
+              <div>
+                <label className="form-label" htmlFor="aircallToken">Aircall API Token</label>
+                <input
+                  id="aircallToken"
+                  type="password"
+                  className="login-input"
+                  value={aircallTokenInput}
+                  onChange={(event) => setAircallTokenInput(event.target.value)}
+                  placeholder="Paste your Aircall token"
+                />
+                <div className="login-helper">Your token is stored locally in this browser only.</div>
+              </div>
+              <div>
+                <label className="form-label" htmlFor="aircallAppId">Aircall App ID</label>
+                <input
+                  id="aircallAppId"
+                  type="text"
+                  className="login-input"
+                  value={AIRCALL_APP_ID}
+                  disabled
+                />
+                <div className="login-helper">OfferUp App ID is already configured.</div>
+              </div>
+              <button className="login-btn" type="submit" disabled={isSubmittingAircallToken}>
+                {isSubmittingAircallToken ? 'Initializing Aircall…' : 'Initialize Aircall'}
+                {isSubmittingAircallToken && (
+                  <span className="login-btn-loading-bar" />
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : (
+        <div className="app-container">
         
         {/* Mobile Menu Toggle */}
         <button 
@@ -1240,6 +1559,14 @@ function App() {
           
           {/* Header */}
           <header className="header-area">
+            {isInitializingAircall && (
+              <div style={{ width: '100%' }}>
+                <div className="global-loading-label">Syncing Aircall activity ({initProgress.current}/{initProgress.total})</div>
+                <div className="global-loading">
+                  <div className="global-loading-bar" style={{ width: `${initPercent}%` }} />
+                </div>
+              </div>
+            )}
             <div>
               <h2 className="page-title">
                 {activeTab === 'Clients' && 'Client Database'}
@@ -1710,8 +2037,25 @@ function App() {
                     )}
                   </div>
 
-                  {/* Content Body */}
-                  <div className="detail-grid">
+                  <div className="detail-tabs">
+                    <button
+                      className={`detail-tab ${clientDetailTab === 'overview' ? 'active' : ''}`}
+                      onClick={() => setClientDetailTab('overview')}
+                    >
+                      Overview
+                    </button>
+                    <button
+                      className={`detail-tab ${clientDetailTab === 'activity' ? 'active' : ''}`}
+                      onClick={() => setClientDetailTab('activity')}
+                    >
+                      Recent Activity
+                    </button>
+                  </div>
+
+                  {clientDetailTab === 'overview' ? (
+                    <>
+                    {/* Content Body */}
+                    <div className="detail-grid">
                     
                     {/* --- Left Column: Contact --- */}
                     <div>
@@ -1902,6 +2246,67 @@ function App() {
                       </>
                     )}
                   </div>
+                  </>
+                  ) : (
+                    <div>
+                      <div className="activity-summary">
+                        <div>
+                          <h3 className="section-label">Recent Activity for {selectedClient.phone || 'Unknown number'}</h3>
+                          <div className="login-helper">Showing {selectedActivity.items.length} interactions.</div>
+                        </div>
+                        <button
+                          className="activity-btn"
+                          onClick={() => fetchAircallInteractions(selectedClient, { page: 1, append: false })}
+                          disabled={selectedActivity.loading}
+                        >
+                          <Phone size={16} />
+                          {selectedActivity.loading ? 'Loading…' : 'Fetch Recent Activity'}
+                        </button>
+                      </div>
+
+                      {selectedActivity.error && (
+                        <div className="activity-empty">
+                          <strong>Aircall Error:</strong> {selectedActivity.error}
+                        </div>
+                      )}
+
+                      {selectedActivity.items.length > 0 ? (
+                        <div className="activity-list">
+                          {selectedActivity.items.map((call, index) => (
+                            <div key={`${call.id}-${index}`} className="activity-card">
+                              <div className="activity-header">
+                                <div className="activity-title">Call #{index + 1}</div>
+                                <span className="status-indicator status-active">{call.direction || 'Call'}</span>
+                              </div>
+                              <div className="activity-meta">
+                                <div><strong>Date:</strong> {formatDateTime(call.startedAt)}</div>
+                                <div><strong>Duration:</strong> {formatDuration(call.duration)}</div>
+                                <div><strong>Caller:</strong> {call.userName || 'Unknown'}</div>
+                                <div><strong>From:</strong> {call.fromNumber || 'Unknown'} • <strong>To:</strong> {call.toNumber || 'Unknown'}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        !selectedActivity.loading && !selectedActivity.error && (
+                          <div className="activity-empty">No recent interactions have been loaded for this number yet.</div>
+                        )
+                      )}
+
+                      <div className="activity-actions">
+                        <button
+                          className="activity-btn secondary"
+                          onClick={() => fetchAircallInteractions(selectedClient, { page: selectedActivity.nextPage, append: true })}
+                          disabled={!selectedActivity.hasMore || selectedActivity.loading}
+                        >
+                          {selectedActivity.hasMore ? 'Load More Interactions' : 'No Further Interactions'}
+                        </button>
+                        {selectedActivity.hasMore && (
+                          <span className="login-helper">Pull up to five more interactions from Aircall.</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -1986,6 +2391,7 @@ function App() {
         </Modal>
 
       </div>
+      )}
     </>
   );
 }
