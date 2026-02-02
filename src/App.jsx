@@ -96,7 +96,7 @@ const STYLES = `
     flex: 1; 
     height: 100%; 
     overflow-y: auto; 
-    padding: 2rem; 
+    padding: 0 2rem 2rem; 
     position: relative; 
     background-color: #f8f9fa; 
     width: 100%; /* Ensure it fills remaining flex space */
@@ -393,9 +393,8 @@ const STYLES = `
     .hidden-on-desktop { display: block; }
     .sidebar { position: absolute; height: 100%; transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
-    .main-content { padding: 1rem; }
+    .main-content { padding: 0 1rem 1rem; }
     .controls { flex-direction: column; max-width: 100%; }
-    .header-area { padding-top: 3rem; }
     .search-wrapper { width: 100%; }
     .btn-primary span { display: inline; }
     .import-grid { grid-template-columns: 1fr 1fr 1fr; }
