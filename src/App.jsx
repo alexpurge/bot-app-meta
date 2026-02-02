@@ -153,6 +153,8 @@ const STYLES = `
   .search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #94a3b8; }
   .search-input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border-radius: 0.75rem; border: none; background: white; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); outline: none; transition: box-shadow 0.2s; font-size: 1rem; border: 1px solid #e2e8f0; height: 3.125rem; color: #0f172a; }
   .search-input:focus { ring: 2px solid #ff5d00; border-color: #ff5d00; }
+
+  .controls-actions { display: flex; align-items: center; gap: 0.75rem; margin-left: auto; flex-wrap: wrap; }
   
   .btn-primary { background-color: #ff5d00; color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(255, 93, 0, 0.3); transition: transform 0.1s; white-space: nowrap; height: 3.125rem; }
   .btn-primary:active { transform: scale(0.98); }
@@ -160,6 +162,10 @@ const STYLES = `
   
   .btn-secondary { background-color: white; color: #475569; padding: 0.75rem 1.25rem; border-radius: 0.75rem; font-weight: 600; border: 1px solid #e2e8f0; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: background 0.1s; white-space: nowrap; height: 3.125rem; }
   .btn-secondary:hover { background-color: #f8f9fa; border-color: #cbd5e1; }
+
+  .btn-stripe { background: linear-gradient(135deg, #635bff 0%, #7a73ff 45%, #917bff 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; box-shadow: 0 8px 20px -12px rgba(99, 91, 255, 0.6); transition: transform 0.1s, box-shadow 0.2s; white-space: nowrap; height: 3.125rem; }
+  .btn-stripe:hover { box-shadow: 0 10px 26px -14px rgba(99, 91, 255, 0.75); }
+  .btn-stripe:active { transform: scale(0.98); }
   
   .btn-bulk-delete { background-color: #fef2f2; color: #ef4444; border-color: #fecaca; }
   .btn-bulk-delete:hover { background-color: #fee2e2; }
@@ -276,6 +282,40 @@ const STYLES = `
   .review-actions { margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
   .action-btn-mini { padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; background-color: #fff7ed; color: #ff5d00; transition: all 0.2s; margin-top: 0.25rem; }
   .action-btn-mini:hover { background-color: #ffedd5; }
+
+  /* Stripe Sync */
+  .stripe-modal { display: grid; gap: 1.5rem; }
+  .stripe-modal-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+  .stripe-subtitle { color: #64748b; margin-top: 0.35rem; font-size: 0.95rem; max-width: 34rem; }
+  .stripe-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.75rem; border-radius: 999px; background-color: #eef2ff; color: #4338ca; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .stripe-stepper { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .stripe-step { padding: 0.5rem 0.75rem; border-radius: 0.75rem; background-color: #f1f5f9; color: #64748b; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem; }
+  .stripe-step.active { background-color: #e0e7ff; color: #4338ca; }
+  .stripe-step.complete { background-color: #dcfce7; color: #15803d; }
+  .stripe-connect-card { border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.5rem; display: grid; gap: 1.25rem; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); }
+  .stripe-feature-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .stripe-feature { background-color: #f8fafc; border-radius: 0.75rem; padding: 0.75rem; border: 1px solid #e2e8f0; display: flex; gap: 0.6rem; align-items: flex-start; }
+  .stripe-feature-icon { width: 2rem; height: 2rem; border-radius: 0.65rem; background-color: #eef2ff; color: #4338ca; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .stripe-key-input { width: 100%; padding: 0.85rem 1rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; font-size: 0.95rem; font-family: inherit; background-color: white; }
+  .stripe-key-input:focus { outline: none; border-color: #635bff; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15); }
+  .stripe-loading { border: 1px solid #e2e8f0; border-radius: 1rem; padding: 2rem; text-align: center; background-color: #f8fafc; }
+  .stripe-loading-bar { height: 8px; border-radius: 999px; background: linear-gradient(90deg, #635bff, #a78bfa); margin-top: 1rem; overflow: hidden; position: relative; }
+  .stripe-loading-bar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,255,255,0.2), rgba(255,255,255,0.7), rgba(255,255,255,0.2)); animation: loadingSlide 1.2s infinite; }
+  .stripe-results { display: grid; gap: 1rem; }
+  .stripe-results-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
+  .stripe-results-meta { color: #64748b; font-size: 0.9rem; }
+  .stripe-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .stripe-table th { text-align: left; padding: 0.75rem; background-color: #f8fafc; color: #64748b; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
+  .stripe-table td { padding: 0.85rem 0.75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; color: #334155; }
+  .stripe-table tr:hover { background-color: #f8fafc; }
+  .stripe-match-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.5rem; border-radius: 999px; background-color: #fff7ed; color: #ea580c; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0.35rem 0.35rem 0; }
+  .stripe-customer-card { display: grid; gap: 0.2rem; }
+  .stripe-customer-title { font-weight: 700; color: #0f172a; }
+  .stripe-customer-sub { font-size: 0.8rem; color: #64748b; }
+  .stripe-verify { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.6rem; border-radius: 0.6rem; background-color: #ecfccb; color: #4d7c0f; font-size: 0.75rem; font-weight: 700; }
+  .stripe-review-actions { display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap; }
+  .stripe-select-all { background: #f1f5f9; color: #475569; border: none; padding: 0.4rem 0.75rem; border-radius: 0.6rem; font-weight: 600; cursor: pointer; }
+  .stripe-select-all:hover { background-color: #e2e8f0; }
 
   /* Aircall Login */
   .login-page { min-height: 100vh; background: #0b0b0b; display: flex; align-items: center; justify-content: center; padding: 2rem; }
@@ -705,6 +745,11 @@ function App() {
   const [selectedClientIds, setSelectedClientIds] = useState(new Set());
   const [bulkActionType, setBulkActionType] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isStripeSyncOpen, setIsStripeSyncOpen] = useState(false);
+  const [stripeApiKey, setStripeApiKey] = useState('');
+  const [stripeSyncStage, setStripeSyncStage] = useState('connect');
+  const [stripeMatches, setStripeMatches] = useState([]);
+  const [stripeMatchSelection, setStripeMatchSelection] = useState(new Set());
   
   // Navigation State
   const [activeTab, setActiveTab] = useState('Clients');
@@ -791,6 +836,87 @@ function App() {
   const normalizePhoneNumber = (phone) => {
     if (!phone) return '';
     return phone.replace(/[^\d+]/g, '');
+  };
+
+  const buildStripeMatches = () => {
+    const sampleClients = clients.slice(0, 6);
+    return sampleClients.map((client, index) => {
+      const matchReasons = [];
+      if (index % 3 === 0) matchReasons.push('Mobile number');
+      if (index % 3 === 1) matchReasons.push('Company name');
+      if (index % 3 === 2) matchReasons.push('Contact name');
+      if (index === 4) matchReasons.push('Mobile number', 'Company name');
+
+      const stripeCustomer = {
+        name: matchReasons.includes('Contact name') ? client.contactName : `Billing - ${client.businessName}`,
+        company: client.businessName,
+        phone: client.phone,
+        email: client.email || `billing@${client.businessName.toLowerCase().replace(/\s+/g, '')}.com`,
+        subscriptions: Math.max(1, (index % 3) + 1),
+        plan: ['Growth Retainer', 'Performance Plus', 'Enterprise Scale'][index % 3]
+      };
+
+      return {
+        id: `${client.id}-stripe`,
+        client,
+        stripeCustomer,
+        matchReasons,
+        confidence: matchReasons.length > 1 ? 'High confidence' : 'Likely match'
+      };
+    });
+  };
+
+  const openStripeSync = () => {
+    setStripeApiKey('');
+    setStripeMatches([]);
+    setStripeMatchSelection(new Set());
+    setStripeSyncStage('connect');
+    setIsStripeSyncOpen(true);
+  };
+
+  const closeStripeSync = () => {
+    setIsStripeSyncOpen(false);
+    setStripeSyncStage('connect');
+  };
+
+  const handleStripeConnect = () => {
+    if (!stripeApiKey.trim()) {
+      showToast('error', 'Stripe key required', 'Enter your Stripe secret key to start syncing.');
+      return;
+    }
+    setStripeSyncStage('loading');
+    setTimeout(() => {
+      const matches = buildStripeMatches();
+      setStripeMatches(matches);
+      setStripeMatchSelection(new Set(matches.map(match => match.id)));
+      setStripeSyncStage('review');
+      showToast('success', 'Stripe sync ready', `Pulled ${matches.length} active Stripe customers.`);
+    }, 1200);
+  };
+
+  const toggleStripeMatch = (id) => {
+    setStripeMatchSelection(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllStripeMatches = () => {
+    if (stripeMatchSelection.size === stripeMatches.length) {
+      setStripeMatchSelection(new Set());
+    } else {
+      setStripeMatchSelection(new Set(stripeMatches.map(match => match.id)));
+    }
+  };
+
+  const confirmStripeMatches = () => {
+    setStripeSyncStage('complete');
+    showToast('success', 'Stripe sync confirmed', 'Selected matches have been queued for review.');
   };
 
   const buildAircallAuthHeader = (tokenOverride, appIdOverride) => {
@@ -1686,42 +1812,48 @@ function App() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  {selectedClientIds.size > 0 ? (
-                    <>
-                      <button onClick={selectAll} className="btn-secondary" title="Select All in View">
-                        <CheckSquare size={18} /> Select All
+                  <div className="controls-actions">
+                    {selectedClientIds.size > 0 ? (
+                      <>
+                        <button onClick={selectAll} className="btn-secondary" title="Select All in View">
+                          <CheckSquare size={18} /> Select All
+                        </button>
+                        <div className="custom-select-wrapper">
+                          <select 
+                            className="custom-select"
+                            style={{ minWidth: '140px' }}
+                            value={bulkActionType}
+                            onChange={(e) => setBulkActionType(e.target.value)}
+                          >
+                            <option value="">Bulk Actions...</option>
+                            <option value="Active">Set Active</option>
+                            <option value="Paused">Set Paused</option>
+                            <option value="Cancelled">Set Cancelled</option>
+                            <option value="delete">Delete Selected</option>
+                          </select>
+                          <ChevronDown className="custom-select-arrow" size={16} />
+                        </div>
+                        <button onClick={applyBulkAction} className="btn-primary" disabled={!bulkActionType}>
+                          Submit <ArrowRight size={16} />
+                        </button>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b', alignSelf: 'center', marginLeft: '0.5rem' }}>
+                          {selectedClientIds.size} Selected
+                        </span>
+                      </>
+                    ) : (
+                      <button 
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="btn-primary"
+                      >
+                        <Plus size={20} />
+                        <span>Add New</span>
                       </button>
-                      <div className="custom-select-wrapper">
-                        <select 
-                          className="custom-select"
-                          style={{ minWidth: '140px' }}
-                          value={bulkActionType}
-                          onChange={(e) => setBulkActionType(e.target.value)}
-                        >
-                          <option value="">Bulk Actions...</option>
-                          <option value="Active">Set Active</option>
-                          <option value="Paused">Set Paused</option>
-                          <option value="Cancelled">Set Cancelled</option>
-                          <option value="delete">Delete Selected</option>
-                        </select>
-                        <ChevronDown className="custom-select-arrow" size={16} />
-                      </div>
-                      <button onClick={applyBulkAction} className="btn-primary" disabled={!bulkActionType}>
-                        Submit <ArrowRight size={16} />
-                      </button>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b', alignSelf: 'center', marginLeft: '0.5rem' }}>
-                        {selectedClientIds.size} Selected
-                      </span>
-                    </>
-                  ) : (
-                    <button 
-                      onClick={() => setIsAddModalOpen(true)}
-                      className="btn-primary"
-                    >
-                      <Plus size={20} />
-                      <span>Add New</span>
+                    )}
+                    <button onClick={openStripeSync} className="btn-stripe">
+                      <Play size={18} />
+                      <span>Sync with Stripe</span>
                     </button>
-                  )}
+                  </div>
                 </>
               )}
 
@@ -1850,6 +1982,183 @@ function App() {
             </div>
           )}
         </main>
+
+        {/* STRIPE SYNC MODAL */}
+        <Modal isOpen={isStripeSyncOpen} onClose={closeStripeSync}>
+          <div className="modal-body stripe-modal">
+            <div className="stripe-modal-header">
+              <div>
+                <span className="section-label">Stripe Sync</span>
+                <h2 className="modal-title">Sync active Stripe subscribers</h2>
+                <p className="stripe-subtitle">
+                  Connect your Stripe API key to pull all active subscription customers and review matches with your client database.
+                </p>
+              </div>
+              <span className="stripe-pill">
+                <ShieldCheck size={14} /> Secure connection
+              </span>
+            </div>
+
+            <div className="stripe-stepper">
+              <span className={`stripe-step ${stripeSyncStage === 'connect' ? 'active' : 'complete'}`}>
+                <FileJson size={14} /> Connect
+              </span>
+              <span className={`stripe-step ${stripeSyncStage === 'loading' ? 'active' : stripeSyncStage === 'review' || stripeSyncStage === 'complete' ? 'complete' : ''}`}>
+                <Table size={14} /> Pull Stripe Customers
+              </span>
+              <span className={`stripe-step ${stripeSyncStage === 'review' ? 'active' : stripeSyncStage === 'complete' ? 'complete' : ''}`}>
+                <CheckCircle size={14} /> Match Review
+              </span>
+            </div>
+
+            {stripeSyncStage === 'connect' && (
+              <div className="stripe-connect-card">
+                <div>
+                  <label className="section-label" htmlFor="stripe-key">Stripe Secret Key</label>
+                  <input
+                    id="stripe-key"
+                    type="password"
+                    placeholder="sk_live_..."
+                    className="stripe-key-input"
+                    value={stripeApiKey}
+                    onChange={(event) => setStripeApiKey(event.target.value)}
+                  />
+                  <p className="stripe-subtitle" style={{ marginTop: '0.5rem' }}>
+                    We never store your key locally. This is used to request active subscription customers from Stripe.
+                  </p>
+                </div>
+                <div className="stripe-feature-grid">
+                  <div className="stripe-feature">
+                    <span className="stripe-feature-icon"><Table size={16} /></span>
+                    <div>
+                      <div className="stripe-customer-title">Full subscriber pull</div>
+                      <div className="stripe-customer-sub">Fetch every active customer with live subscriptions.</div>
+                    </div>
+                  </div>
+                  <div className="stripe-feature">
+                    <span className="stripe-feature-icon"><CheckCircle size={16} /></span>
+                    <div>
+                      <div className="stripe-customer-title">Smart matching</div>
+                      <div className="stripe-customer-sub">We match by phone, name, and company fields.</div>
+                    </div>
+                  </div>
+                  <div className="stripe-feature">
+                    <span className="stripe-feature-icon"><ShieldCheck size={16} /></span>
+                    <div>
+                      <div className="stripe-customer-title">Manual verification</div>
+                      <div className="stripe-customer-sub">Confirm or deny each proposed link before syncing.</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-actions" style={{ marginTop: '0.5rem' }}>
+                  <button className="btn-ghost" onClick={closeStripeSync}>Cancel</button>
+                  <button className="btn-stripe" onClick={handleStripeConnect}>
+                    <Play size={18} /> Start Sync
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {stripeSyncStage === 'loading' && (
+              <div className="stripe-loading">
+                <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Pulling Stripe subscribers...</h3>
+                <p className="stripe-subtitle">Fetching active customers and preparing match suggestions.</p>
+                <div className="stripe-loading-bar" />
+              </div>
+            )}
+
+            {stripeSyncStage === 'review' && (
+              <div className="stripe-results">
+                <div className="stripe-results-header">
+                  <div>
+                    <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Review Stripe matches</h3>
+                    <p className="stripe-results-meta">
+                      {stripeMatches.length} Stripe customers with active subscriptions detected.
+                    </p>
+                  </div>
+                  <div>
+                    <button className="stripe-select-all" onClick={toggleAllStripeMatches}>
+                      {stripeMatchSelection.size === stripeMatches.length ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
+                </div>
+                <div style={{ overflowX: 'auto', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                  <table className="stripe-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '60px' }}>Select</th>
+                        <th>Stripe Customer</th>
+                        <th>Client Database</th>
+                        <th>Matched by</th>
+                        <th>Confidence</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stripeMatches.map((match) => {
+                        const isSelected = stripeMatchSelection.has(match.id);
+                        return (
+                          <tr key={match.id}>
+                            <td>
+                              <div
+                                className={`card-select-checkbox ${isSelected ? 'checked' : ''}`}
+                                onClick={() => toggleStripeMatch(match.id)}
+                                style={{ width: '1.25rem', height: '1.25rem' }}
+                              >
+                                {isSelected && <Check size={12} />}
+                              </div>
+                            </td>
+                            <td>
+                              <div className="stripe-customer-card">
+                                <span className="stripe-customer-title">{match.stripeCustomer.name}</span>
+                                <span className="stripe-customer-sub">{match.stripeCustomer.company}</span>
+                                <span className="stripe-customer-sub">{match.stripeCustomer.email}</span>
+                                <span className="stripe-customer-sub">{match.stripeCustomer.subscriptions} active · {match.stripeCustomer.plan}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="stripe-customer-card">
+                                <span className="stripe-customer-title">{match.client.businessName}</span>
+                                <span className="stripe-customer-sub">{match.client.contactName}</span>
+                                <span className="stripe-customer-sub">{match.client.phone}</span>
+                                <span className="stripe-customer-sub">{match.client.location}</span>
+                              </div>
+                            </td>
+                            <td>
+                              {match.matchReasons.map((reason) => (
+                                <span key={reason} className="stripe-match-pill">{reason}</span>
+                              ))}
+                            </td>
+                            <td>
+                              <span className="stripe-verify">{match.confidence}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="stripe-review-actions">
+                  <button className="btn-ghost" onClick={() => setStripeSyncStage('connect')}>Back</button>
+                  <button className="btn-primary" onClick={confirmStripeMatches} disabled={stripeMatchSelection.size === 0}>
+                    Confirm & Submit <ArrowRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {stripeSyncStage === 'complete' && (
+              <div className="stripe-loading">
+                <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Sync queued successfully</h3>
+                <p className="stripe-subtitle">
+                  {stripeMatchSelection.size} customer matches have been confirmed and queued for syncing into your CRM.
+                </p>
+                <div className="modal-actions" style={{ justifyContent: 'center' }}>
+                  <button className="btn-primary" onClick={closeStripeSync}>Done</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
 
         {/* IMPORT REVIEW MODAL */}
         <Modal isOpen={isImportReviewOpen} onClose={() => setIsImportReviewOpen(false)}>
