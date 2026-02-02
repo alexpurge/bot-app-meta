@@ -718,7 +718,9 @@ function App() {
 
   // Aircall Auth & Activity
   const [aircallToken, setAircallToken] = useState(() => localStorage.getItem('aircallToken') || '');
+  const [aircallAppId, setAircallAppId] = useState(() => localStorage.getItem('aircallAppId') || AIRCALL_APP_ID);
   const [aircallTokenInput, setAircallTokenInput] = useState('');
+  const [aircallAppIdInput, setAircallAppIdInput] = useState(() => localStorage.getItem('aircallAppId') || AIRCALL_APP_ID);
   const [isAircallLoggedIn, setIsAircallLoggedIn] = useState(() => Boolean(localStorage.getItem('aircallToken')));
   const [isSubmittingAircallToken, setIsSubmittingAircallToken] = useState(false);
   const [isInitializingAircall, setIsInitializingAircall] = useState(false);
@@ -800,8 +802,8 @@ function App() {
     return phone.replace(/[^\d+]/g, '');
   };
 
-  const buildAircallAuthHeader = (tokenOverride) => {
-    const credentials = btoa(`${AIRCALL_APP_ID}:${tokenOverride}`);
+  const buildAircallAuthHeader = (tokenOverride, appIdOverride) => {
+    const credentials = btoa(`${appIdOverride}:${tokenOverride}`);
     return `Basic ${credentials}`;
   };
 
@@ -824,10 +826,10 @@ function App() {
   const fetchAircallInteractions = async (client, options = {}) => {
     if (!client) return;
     const { page = 1, append = false, notify = true, token = aircallToken } = options;
-    if (!token) {
-      updateAircallActivity(client.id, { error: 'Aircall token missing.', loading: false });
+    if (!token || !aircallAppId) {
+      updateAircallActivity(client.id, { error: 'Aircall credentials missing.', loading: false });
       if (notify) {
-        showToast('error', 'Aircall token missing', 'Add your Aircall API token to load activity.');
+        showToast('error', 'Aircall credentials missing', 'Add your Aircall App ID and API token to load activity.');
       }
       return;
     }
@@ -851,7 +853,7 @@ function App() {
 
       const response = await fetch(url.toString(), {
         headers: {
-          Authorization: buildAircallAuthHeader(token)
+          Authorization: buildAircallAuthHeader(token, aircallAppId)
         }
       });
 
@@ -936,6 +938,11 @@ function App() {
   const handleAircallLogin = async (event) => {
     event.preventDefault();
     const trimmedToken = aircallTokenInput.trim();
+    const trimmedAppId = aircallAppIdInput.trim();
+    if (!trimmedAppId) {
+      showToast('error', 'App ID required', 'Enter your Aircall App ID to continue.');
+      return;
+    }
     if (!trimmedToken) {
       showToast('error', 'Token required', 'Enter your Aircall API token to continue.');
       return;
@@ -944,11 +951,14 @@ function App() {
     setIsSubmittingAircallToken(true);
     try {
       localStorage.setItem('aircallToken', trimmedToken);
+      localStorage.setItem('aircallAppId', trimmedAppId);
       setAircallToken(trimmedToken);
+      setAircallAppId(trimmedAppId);
       setIsAircallLoggedIn(true);
       setHasInitializedAircall(true);
       await initializeAircall(trimmedToken);
       setAircallTokenInput('');
+      setAircallAppIdInput(trimmedAppId);
     } catch (error) {
       showToast('error', 'Aircall login failed', error.message);
     } finally {
@@ -1445,10 +1455,11 @@ function App() {
                   id="aircallAppId"
                   type="text"
                   className="login-input"
-                  value={AIRCALL_APP_ID}
-                  disabled
+                  value={aircallAppIdInput}
+                  onChange={(event) => setAircallAppIdInput(event.target.value)}
+                  placeholder="Paste your Aircall App ID"
                 />
-                <div className="login-helper">OfferUp App ID is already configured.</div>
+                <div className="login-helper">Your App ID is stored locally in this browser only.</div>
               </div>
               <button className="login-btn" type="submit" disabled={isSubmittingAircallToken}>
                 {isSubmittingAircallToken ? 'Initializing Aircall…' : 'Initialize Aircall'}
