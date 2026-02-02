@@ -278,7 +278,7 @@ const STYLES = `
   .action-btn-mini:hover { background-color: #ffedd5; }
 
   /* Aircall Login */
-  .login-page { min-height: 100vh; background: #000; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+  .login-page { min-height: 100vh; background: #0b0b0b; display: flex; align-items: center; justify-content: center; padding: 2rem; }
   .login-card { width: min(480px, 100%); background: rgba(255, 255, 255, 0.98); border-radius: 1.5rem; padding: 2.5rem; box-shadow: 0 40px 80px -30px rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.4); }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
   .login-logo img { width: 48px; height: 48px; }
