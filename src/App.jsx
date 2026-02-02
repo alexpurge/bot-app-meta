@@ -1176,9 +1176,64 @@ function App() {
     }
   };
 
+  const getLast30DayRange = () => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 30);
+    return { start, end };
+  };
+
+  const isWithinRange = (value, range) => {
+    if (!value) return false;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+    return date >= range.start && date <= range.end;
+  };
+
+  const buildOverviewSnapshot = (client, range) => {
+    const overview = client.overview || client.performance || client.metrics || {};
+    return {
+      totalSpend: overview.totalSpend ?? overview.spend ?? null,
+      impressions: overview.impressions ?? null,
+      averageCpm: overview.averageCpm ?? overview.avgCpm ?? null,
+      range: {
+        start: range.start.toISOString(),
+        end: range.end.toISOString()
+      }
+    };
+  };
+
+  const buildChangeHistorySnapshot = (client, range) => {
+    const history = Array.isArray(client.changeHistory) ? client.changeHistory : [];
+    return history.filter(entry => {
+      const dateValue = entry.date || entry.timestamp || entry.updatedAt || entry.createdAt;
+      return isWithinRange(dateValue, range);
+    });
+  };
+
+  const buildRecentActivitySnapshot = (client, range) => {
+    const activity = aircallActivity[client.id]?.items || [];
+    return activity.filter(entry => isWithinRange(entry.startedAt, range));
+  };
+
   // --- Export JSON ---
   const handleExportJSON = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(clients, null, 2));
+    const range = getLast30DayRange();
+    const exportPayload = {
+      generatedAt: new Date().toISOString(),
+      range: {
+        start: range.start.toISOString(),
+        end: range.end.toISOString()
+      },
+      clients: clients.map(client => ({
+        ...client,
+        overview: buildOverviewSnapshot(client, range),
+        team: Array.isArray(client.team) ? client.team : [],
+        changeHistory: buildChangeHistorySnapshot(client, range),
+        recentActivity: buildRecentActivitySnapshot(client, range)
+      }))
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "clients_export.json");
