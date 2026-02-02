@@ -298,7 +298,7 @@ const STYLES = `
   .action-btn-mini:hover { background-color: rgba(255, 93, 0, 0.25); }
 
   /* Stripe Sync */
-  .stripe-modal { display: grid; gap: 1.5rem; }
+  .stripe-modal { display: flex; flex-direction: column; gap: 1.5rem; height: 100%; min-height: 0; }
   .stripe-modal-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
   .stripe-subtitle { color: var(--text-secondary); margin-top: 0.35rem; font-size: 0.95rem; max-width: 34rem; }
   .stripe-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.75rem; border-radius: 999px; background-color: rgba(99, 91, 255, 0.18); color: #a5b4fc; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; border: 1px solid rgba(99, 91, 255, 0.35); }
@@ -315,10 +315,10 @@ const STYLES = `
   .stripe-loading { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1rem; padding: 2rem; text-align: center; background-color: rgba(15, 23, 42, 0.6); color: var(--text-secondary); }
   .stripe-loading-bar { height: 8px; border-radius: 999px; background: linear-gradient(90deg, #635bff, #a78bfa); margin-top: 1rem; overflow: hidden; position: relative; }
   .stripe-loading-bar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,255,255,0.2), rgba(255,255,255,0.7), rgba(255,255,255,0.2)); animation: loadingSlide 1.2s infinite; }
-  .stripe-results { display: grid; gap: 1rem; }
+  .stripe-results { display: flex; flex-direction: column; gap: 1rem; min-height: 0; flex: 1; }
   .stripe-results-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
   .stripe-results-meta { color: var(--text-secondary); font-size: 0.9rem; }
-  .stripe-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .stripe-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background-color: transparent; }
   .stripe-table th { text-align: left; padding: 0.75rem; background-color: rgba(15, 23, 42, 0.8); color: var(--text-secondary); font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
   .stripe-table td { padding: 0.85rem 0.75rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06); vertical-align: top; color: var(--text-primary); }
   .stripe-table tr:hover { background-color: rgba(255, 255, 255, 0.03); }
@@ -337,20 +337,19 @@ const STYLES = `
   .stripe-customer-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .stripe-subscription-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border-radius: 999px; background-color: rgba(99, 91, 255, 0.2); color: #c7d2fe; font-size: 0.7rem; font-weight: 700; border: 1px solid rgba(99, 91, 255, 0.35); }
   .stripe-no-match { color: var(--text-secondary); font-size: 0.8rem; font-style: italic; }
-  .stripe-merge-grid { display: grid; gap: 1.5rem; }
-  .stripe-merge-card { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1rem; padding: 1.25rem; background: rgba(15, 23, 42, 0.6); display: grid; gap: 1rem; }
+  .stripe-table-wrapper { flex: 1; min-height: 0; overflow: auto; border-radius: 0.75rem; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 23, 42, 0.55); }
+  .stripe-merge-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); align-items: stretch; flex: 1; min-height: 0; }
+  .stripe-merge-card { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1rem; padding: 1.25rem; background: rgba(15, 23, 42, 0.6); display: flex; flex-direction: column; gap: 1rem; min-height: 0; }
   .stripe-merge-card h4 { margin: 0; font-size: 1rem; color: var(--text-primary); }
   .stripe-merge-note { color: var(--text-secondary); font-size: 0.9rem; margin: 0; }
-  .stripe-subscription-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border-radius: 999px; background-color: #eef2ff; color: #4338ca; font-size: 0.7rem; font-weight: 700; }
-  .stripe-no-match { color: #94a3b8; font-size: 0.8rem; font-style: italic; }
-  .stripe-merge-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
-  .stripe-merge-card { border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; background: #ffffff; display: grid; gap: 1rem; }
-  .stripe-merge-card h4 { margin: 0; font-size: 1rem; color: #0f172a; }
-  .stripe-merge-note { color: #64748b; font-size: 0.9rem; margin: 0; }
   .stripe-merge-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
   .stripe-merge-search { min-width: min(320px, 100%); }
-  .stripe-search-input { width: 100%; padding: 0.6rem 0.85rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; font-size: 0.9rem; background-color: #ffffff; }
+  .stripe-search-input { width: 100%; padding: 0.6rem 0.85rem; border-radius: 0.75rem; border: 1px solid rgba(255, 255, 255, 0.12); font-size: 0.9rem; background-color: rgba(15, 23, 42, 0.6); color: var(--text-primary); }
   .stripe-search-input:focus { outline: none; border-color: #635bff; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15); }
+
+  .stripe-modal-content { max-width: 90rem; width: min(96vw, 90rem); max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+  .stripe-modal-content .modal-body { flex: 1; overflow: hidden; }
+  .stripe-modal { height: 100%; min-height: 0; }
 
   /* Aircall Login */
   .login-page { min-height: 100vh; background: var(--bg-dark); display: flex; align-items: center; justify-content: center; padding: 2rem; }
@@ -762,11 +761,11 @@ const SEED_DATA = [
 
 // --- Components ---
 
-const Modal = ({ isOpen, onClose, children }) => {
+const Modal = ({ isOpen, onClose, children, className = '' }) => {
   if (!isOpen) return null;
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
+      <div className={`modal-content ${className}`.trim()}>
         <button className="close-btn" onClick={onClose}>
           <X size={24} />
         </button>
@@ -803,7 +802,8 @@ function App() {
     stripeCustomerId: '',
     clientId: ''
   });
-  const [stripeMergeSearch, setStripeMergeSearch] = useState('');
+  const [stripeCustomerMergeSearch, setStripeCustomerMergeSearch] = useState('');
+  const [stripeClientMergeSearch, setStripeClientMergeSearch] = useState('');
   const [stripeSyncStats, setStripeSyncStats] = useState({
     source: '',
     total: 0,
@@ -1213,6 +1213,8 @@ function App() {
       stripeCustomerId: '',
       clientId: ''
     });
+    setStripeCustomerMergeSearch('');
+    setStripeClientMergeSearch('');
     setStripeSyncStats({
       source: '',
       total: 0,
@@ -1309,22 +1311,24 @@ function App() {
   const stripeUnmatchedCustomers = stripeMatches.filter(match => !match.client);
   const stripeUnmatchedClients = clients.filter(client => !stripeMatchedClientIds.has(client.id));
 
-  const normalizedStripeMergeSearch = stripeMergeSearch.trim().toLowerCase();
-  const stripeMergeSearchMatches = (value) => value?.toLowerCase().includes(normalizedStripeMergeSearch);
+  const normalizedStripeCustomerSearch = stripeCustomerMergeSearch.trim().toLowerCase();
+  const normalizedStripeClientSearch = stripeClientMergeSearch.trim().toLowerCase();
+  const stripeCustomerSearchMatches = (value) => value?.toLowerCase().includes(normalizedStripeCustomerSearch);
+  const stripeClientSearchMatches = (value) => value?.toLowerCase().includes(normalizedStripeClientSearch);
   const filteredStripeUnmatchedCustomers = stripeUnmatchedCustomers.filter(match => (
-    !normalizedStripeMergeSearch
-    || stripeMergeSearchMatches(match.stripeCustomer?.name)
-    || stripeMergeSearchMatches(match.stripeCustomer?.company)
-    || stripeMergeSearchMatches(match.stripeCustomer?.email)
-    || stripeMergeSearchMatches(match.stripeCustomer?.phone)
+    !normalizedStripeCustomerSearch
+    || stripeCustomerSearchMatches(match.stripeCustomer?.name)
+    || stripeCustomerSearchMatches(match.stripeCustomer?.company)
+    || stripeCustomerSearchMatches(match.stripeCustomer?.email)
+    || stripeCustomerSearchMatches(match.stripeCustomer?.phone)
   ));
   const filteredStripeUnmatchedClients = stripeUnmatchedClients.filter(client => (
-    !normalizedStripeMergeSearch
-    || stripeMergeSearchMatches(client.businessName)
-    || stripeMergeSearchMatches(client.contactName)
-    || stripeMergeSearchMatches(client.email)
-    || stripeMergeSearchMatches(client.phone)
-    || stripeMergeSearchMatches(client.location)
+    !normalizedStripeClientSearch
+    || stripeClientSearchMatches(client.businessName)
+    || stripeClientSearchMatches(client.contactName)
+    || stripeClientSearchMatches(client.email)
+    || stripeClientSearchMatches(client.phone)
+    || stripeClientSearchMatches(client.location)
   ));
 
   const handleStripeMergeSelection = (type, id) => {
@@ -2438,7 +2442,7 @@ function App() {
         </main>
 
         {/* STRIPE SYNC MODAL */}
-        <Modal isOpen={isStripeSyncOpen} onClose={closeStripeSync}>
+        <Modal isOpen={isStripeSyncOpen} onClose={closeStripeSync} className="stripe-modal-content">
           <div className="modal-body stripe-modal">
             <div className="stripe-modal-header">
               <div>
@@ -2544,7 +2548,7 @@ function App() {
                     </button>
                   </div>
                 </div>
-                <div style={{ overflowX: 'auto', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                <div className="stripe-table-wrapper">
                   <table className="stripe-table">
                     <thead>
                       <tr>
@@ -2636,15 +2640,6 @@ function App() {
                       {stripeUnmatchedCustomers.length} Stripe customers without a client match · {stripeUnmatchedClients.length} client records without a Stripe match.
                     </p>
                   </div>
-                  <div className="stripe-merge-search">
-                    <input
-                      type="search"
-                      placeholder="Search clients or Stripe customers"
-                      className="stripe-search-input"
-                      value={stripeMergeSearch}
-                      onChange={(event) => setStripeMergeSearch(event.target.value)}
-                    />
-                  </div>
                 </div>
                 <div className="stripe-merge-grid">
                   <div className="stripe-merge-card">
@@ -2652,12 +2647,21 @@ function App() {
                       <h4>Unmatched Stripe customers</h4>
                       <p className="stripe-merge-note">
                         Select one Stripe customer to pair with a client record.
-                        {normalizedStripeMergeSearch && (
+                        {normalizedStripeCustomerSearch && (
                           <span className="stripe-merge-note"> Showing {filteredStripeUnmatchedCustomers.length} of {stripeUnmatchedCustomers.length}.</span>
                         )}
                       </p>
                     </div>
-                    <div style={{ overflowX: 'auto', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                    <div className="stripe-merge-search">
+                      <input
+                        type="search"
+                        placeholder="Search Stripe customers"
+                        className="stripe-search-input"
+                        value={stripeCustomerMergeSearch}
+                        onChange={(event) => setStripeCustomerMergeSearch(event.target.value)}
+                      />
+                    </div>
+                    <div className="stripe-table-wrapper">
                       <table className="stripe-table">
                         <thead>
                           <tr>
@@ -2713,12 +2717,21 @@ function App() {
                       <h4>Unmatched client records</h4>
                       <p className="stripe-merge-note">
                         Select one client record to merge with the chosen Stripe customer.
-                        {normalizedStripeMergeSearch && (
+                        {normalizedStripeClientSearch && (
                           <span className="stripe-merge-note"> Showing {filteredStripeUnmatchedClients.length} of {stripeUnmatchedClients.length}.</span>
                         )}
                       </p>
                     </div>
-                    <div style={{ overflowX: 'auto', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                    <div className="stripe-merge-search">
+                      <input
+                        type="search"
+                        placeholder="Search client records"
+                        className="stripe-search-input"
+                        value={stripeClientMergeSearch}
+                        onChange={(event) => setStripeClientMergeSearch(event.target.value)}
+                      />
+                    </div>
+                    <div className="stripe-table-wrapper">
                       <table className="stripe-table">
                         <thead>
                           <tr>
