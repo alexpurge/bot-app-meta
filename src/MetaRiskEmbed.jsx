@@ -30,7 +30,7 @@ const MetaRiskEmbed = ({ accessToken, onLogout }) => {
     };
   }, []);
 
-  return <div ref={hostRef} style={{ width: '100%', minHeight: '100%' }} />;
+  return <div ref={hostRef} style={{ width: '100%', minHeight: '100%', height: '100%' }} />;
 };
 
 export default MetaRiskEmbed;
