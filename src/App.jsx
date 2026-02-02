@@ -322,6 +322,52 @@ const STYLES = `
   .activity-btn.secondary { background: #f1f5f9; color: #475569; }
   .activity-empty { text-align: center; padding: 2rem 1rem; color: #94a3b8; background: #f8fafc; border-radius: 0.85rem; border: 1px dashed #e2e8f0; }
 
+  /* Aircall Scan Indicator */
+  .scan-indicator {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #0f172a, #1f2937);
+    color: #f8fafc;
+    min-width: 120px;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 18px -12px rgba(15, 23, 42, 0.65);
+  }
+
+  .scan-indicator-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #f8fafc;
+  }
+
+  .scan-indicator-bar {
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background-color: rgba(248, 250, 252, 0.2);
+    overflow: hidden;
+  }
+
+  .scan-indicator-bar-fill {
+    display: block;
+    height: 100%;
+    width: 40%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 93, 0, 0.5), #ff5d00, rgba(255, 93, 0, 0.6));
+    animation: scanPulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes scanPulse {
+    0% { transform: translateX(-120%); opacity: 0.2; }
+    50% { opacity: 1; }
+    100% { transform: translateX(220%); opacity: 0.2; }
+  }
+
   /* Error Grouping Styles */
   .error-group { margin-bottom: 1.5rem; border: 1px solid #fecaca; border-radius: 0.5rem; overflow: hidden; }
   .error-group-header { background-color: #fef2f2; padding: 0.75rem 1rem; font-weight: 700; color: #b91c1c; display: flex; align-items: center; gap: 0.5rem; }
@@ -726,6 +772,14 @@ function App() {
   const [aircallActivity, setAircallActivity] = useState({});
   const [toast, setToast] = useState(null);
   const [clientDetailTab, setClientDetailTab] = useState('overview');
+  const [aircallScanState, setAircallScanState] = useState({
+    active: false,
+    currentClientId: null,
+    inFlight: false,
+    lastCompletedAt: null
+  });
+  const aircallScanIndexRef = useRef(0);
+  const aircallScanInFlightRef = useRef(false);
 
   // Import Review State
   const [isImportReviewOpen, setIsImportReviewOpen] = useState(false);
@@ -751,6 +805,63 @@ function App() {
       setClientDetailTab('overview');
     }
   }, [selectedClient]);
+
+  useEffect(() => {
+    if (!isAircallLoggedIn || !aircallToken || !aircallAppId) {
+      aircallScanInFlightRef.current = false;
+      setAircallScanState({
+        active: false,
+        currentClientId: null,
+        inFlight: false,
+        lastCompletedAt: null
+      });
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      if (aircallScanInFlightRef.current) return;
+
+      const queue = clients.filter(client => normalizePhoneNumber(client.phone));
+      if (queue.length === 0) return;
+
+      const target = queue[aircallScanIndexRef.current % queue.length];
+      aircallScanInFlightRef.current = true;
+      setAircallScanState(prev => ({
+        ...prev,
+        active: true,
+        currentClientId: target.id,
+        inFlight: true
+      }));
+      showToast('info', 'Aircall scan started', `Fetching last 14 days for ${target.businessName}.`);
+
+      const result = await fetchAircallInteractions(target, {
+        page: 1,
+        append: false,
+        notify: false,
+        fetchAll: true,
+        daysBack: 14,
+        perPage: 50
+      });
+
+      if (result?.error) {
+        showToast('error', 'Aircall scan failed', result.error);
+      } else {
+        showToast('success', 'Aircall scan complete', `Loaded ${result?.count ?? 0} interactions for ${target.businessName}.`);
+      }
+
+      aircallScanIndexRef.current = (aircallScanIndexRef.current + 1) % queue.length;
+      aircallScanInFlightRef.current = false;
+      setAircallScanState(prev => ({
+        ...prev,
+        active: true,
+        currentClientId: null,
+        inFlight: false,
+        lastCompletedAt: new Date().toISOString()
+      }));
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [aircallAppId, aircallToken, clients, isAircallLoggedIn]);
 
   // Form State
   const [newClient, setNewClient] = useState({
@@ -815,13 +926,21 @@ function App() {
 
   const fetchAircallInteractions = async (client, options = {}) => {
     if (!client) return;
-    const { page = 1, append = false, notify = true, token = aircallToken } = options;
+    const {
+      page = 1,
+      append = false,
+      notify = true,
+      token = aircallToken,
+      fetchAll = false,
+      daysBack = 14,
+      perPage = 50
+    } = options;
     if (!token || !aircallAppId) {
       updateAircallActivity(client.id, { error: 'Aircall credentials missing.', loading: false });
       if (notify) {
         showToast('error', 'Aircall credentials missing', 'Add your Aircall App ID and API token to load activity.');
       }
-      return;
+      return { count: 0, error: 'Aircall credentials missing.' };
     }
 
     const phoneNumber = normalizePhoneNumber(client.phone);
@@ -830,43 +949,79 @@ function App() {
       if (notify) {
         showToast('error', 'Missing phone number', 'This client does not have a phone number to query.');
       }
-      return;
+      return { count: 0, error: 'No phone number on file.' };
     }
 
     updateAircallActivity(client.id, { loading: true, error: null });
 
     try {
-      const url = new URL(`${AIRCALL_BASE_URL}/calls`);
-      url.searchParams.set('per_page', '5');
-      url.searchParams.set('page', String(page));
-      url.searchParams.set('phone_number', phoneNumber);
+      const toTimestamp = Math.floor(Date.now() / 1000);
+      const fromTimestamp = toTimestamp - daysBack * 24 * 60 * 60;
 
-      const response = await fetch(url.toString(), {
-        headers: {
-          Authorization: buildAircallAuthHeader(token, aircallAppId)
+      const fetchPage = async (pageNumber) => {
+        const url = new URL(`${AIRCALL_BASE_URL}/calls`);
+        url.searchParams.set('per_page', String(perPage));
+        url.searchParams.set('page', String(pageNumber));
+        url.searchParams.set('phone_number', phoneNumber);
+        url.searchParams.set('from', String(fromTimestamp));
+        url.searchParams.set('to', String(toTimestamp));
+
+        const response = await fetch(url.toString(), {
+          headers: {
+            Authorization: buildAircallAuthHeader(token, aircallAppId)
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || `Aircall request failed with ${response.status}`);
         }
-      });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `Aircall request failed with ${response.status}`);
+        return response.json();
+      };
+
+      let aggregated = [];
+      let nextPage = null;
+      let hasMore = false;
+      let currentPage = page;
+
+      if (fetchAll) {
+        let keepGoing = true;
+        while (keepGoing) {
+          const data = await fetchPage(currentPage);
+          const rawCalls = data.calls || data.data || [];
+          const mapped = rawCalls.map(call => ({
+            id: call.id,
+            duration: call.duration,
+            direction: call.direction,
+            startedAt: call.started_at || call.created_at,
+            userName: call.user?.name || call.assigned_to?.name || call.user_name || call.from?.name || call.to?.name,
+            fromNumber: call.from?.phone_number || call.from?.number,
+            toNumber: call.to?.phone_number || call.to?.number,
+            raw: call
+          }));
+          aggregated = aggregated.concat(mapped);
+          nextPage = data.meta?.next_page || null;
+          hasMore = Boolean(nextPage);
+          currentPage = nextPage || currentPage + 1;
+          keepGoing = hasMore;
+        }
+      } else {
+        const data = await fetchPage(currentPage);
+        const rawCalls = data.calls || data.data || [];
+        aggregated = rawCalls.map(call => ({
+          id: call.id,
+          duration: call.duration,
+          direction: call.direction,
+          startedAt: call.started_at || call.created_at,
+          userName: call.user?.name || call.assigned_to?.name || call.user_name || call.from?.name || call.to?.name,
+          fromNumber: call.from?.phone_number || call.from?.number,
+          toNumber: call.to?.phone_number || call.to?.number,
+          raw: call
+        }));
+        nextPage = data.meta?.next_page || null;
+        hasMore = Boolean(nextPage);
       }
-
-      const data = await response.json();
-      const rawCalls = data.calls || data.data || [];
-      const mapped = rawCalls.map(call => ({
-        id: call.id,
-        duration: call.duration,
-        direction: call.direction,
-        startedAt: call.started_at || call.created_at,
-        userName: call.user?.name || call.assigned_to?.name || call.user_name || call.from?.name || call.to?.name,
-        fromNumber: call.from?.phone_number || call.from?.number,
-        toNumber: call.to?.phone_number || call.to?.number,
-        raw: call
-      }));
-
-      const nextPage = data.meta?.next_page || null;
-      const hasMore = Boolean(nextPage);
 
       setAircallActivity(prev => {
         const existing = prev[client.id] || {
@@ -881,7 +1036,7 @@ function App() {
           ...prev,
           [client.id]: {
             ...existing,
-            items: append ? [...existing.items, ...mapped] : mapped,
+            items: append ? [...existing.items, ...aggregated] : aggregated,
             loading: false,
             error: null,
             nextPage: nextPage || page + 1,
@@ -891,13 +1046,15 @@ function App() {
       });
 
       if (notify) {
-        showToast('success', 'Aircall activity loaded', `Fetched ${mapped.length} interactions for ${client.businessName}.`);
+        showToast('success', 'Aircall activity loaded', `Fetched ${aggregated.length} interactions for ${client.businessName}.`);
       }
+      return { count: aggregated.length, error: null };
     } catch (error) {
       updateAircallActivity(client.id, { loading: false, error: error.message });
       if (notify) {
         showToast('error', 'Aircall request failed', error.message);
       }
+      return { count: 0, error: error.message };
     }
   };
 
@@ -1571,6 +1728,14 @@ function App() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
+                  {isAircallLoggedIn && (
+                    <div className="scan-indicator" aria-live="polite">
+                      <span className="scan-indicator-label">Scanning</span>
+                      <div className="scan-indicator-bar">
+                        <span className="scan-indicator-bar-fill" />
+                      </div>
+                    </div>
+                  )}
 
                   {selectedClientIds.size > 0 ? (
                     <>
@@ -2232,14 +2397,6 @@ function App() {
                           <h3 className="section-label">Recent Activity for {selectedClient.phone || 'Unknown number'}</h3>
                           <div className="login-helper">Showing {selectedActivity.items.length} interactions.</div>
                         </div>
-                        <button
-                          className="activity-btn"
-                          onClick={() => fetchAircallInteractions(selectedClient, { page: 1, append: false })}
-                          disabled={selectedActivity.loading}
-                        >
-                          <Phone size={16} />
-                          {selectedActivity.loading ? 'Loading…' : 'Fetch Recent Activity'}
-                        </button>
                       </div>
 
                       {selectedActivity.error && (
@@ -2271,18 +2428,6 @@ function App() {
                         )
                       )}
 
-                      <div className="activity-actions">
-                        <button
-                          className="activity-btn secondary"
-                          onClick={() => fetchAircallInteractions(selectedClient, { page: selectedActivity.nextPage, append: true })}
-                          disabled={!selectedActivity.hasMore || selectedActivity.loading}
-                        >
-                          {selectedActivity.hasMore ? 'Load More Interactions' : 'No Further Interactions'}
-                        </button>
-                        {selectedActivity.hasMore && (
-                          <span className="login-helper">Pull up to five more interactions from Aircall.</span>
-                        )}
-                      </div>
                     </div>
                   )}
                 </>
