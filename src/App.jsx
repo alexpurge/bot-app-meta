@@ -316,6 +316,13 @@ const STYLES = `
   .stripe-review-actions { display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap; }
   .stripe-select-all { background: #f1f5f9; color: #475569; border: none; padding: 0.4rem 0.75rem; border-radius: 0.6rem; font-weight: 600; cursor: pointer; }
   .stripe-select-all:hover { background-color: #e2e8f0; }
+  .stripe-row-disabled { opacity: 0.6; }
+  .stripe-row-disabled .card-select-checkbox { cursor: not-allowed; }
+  .stripe-row-disabled .stripe-verify { background-color: #f1f5f9; color: #64748b; }
+  .stripe-summary-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.6rem; border-radius: 999px; background-color: #f1f5f9; color: #475569; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stripe-customer-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .stripe-subscription-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border-radius: 999px; background-color: #eef2ff; color: #4338ca; font-size: 0.7rem; font-weight: 700; }
+  .stripe-no-match { color: #94a3b8; font-size: 0.8rem; font-style: italic; }
 
   /* Aircall Login */
   .login-page { min-height: 100vh; background: #0b0b0b; display: flex; align-items: center; justify-content: center; padding: 2rem; }
@@ -350,6 +357,20 @@ const STYLES = `
   .detail-tabs { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; border-bottom: 1px solid #e2e8f0; }
   .detail-tab { padding: 0.5rem 1rem; border-radius: 0.75rem 0.75rem 0 0; background: transparent; border: none; font-weight: 700; color: #94a3b8; cursor: pointer; }
   .detail-tab.active { color: #ff5d00; border-bottom: 3px solid #ff5d00; background: #fff7ed; }
+
+  /* Services Tab */
+  .services-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .services-meta { font-size: 0.85rem; color: #64748b; }
+  .services-grid { display: grid; gap: 1rem; }
+  .service-card { border: 1px solid #e2e8f0; border-radius: 0.9rem; padding: 1rem; background: #ffffff; box-shadow: 0 6px 18px -14px rgba(15, 23, 42, 0.4); display: grid; gap: 0.75rem; }
+  .service-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .service-name { font-size: 1rem; font-weight: 700; color: #0f172a; }
+  .service-plan { font-size: 0.85rem; color: #64748b; }
+  .service-status { padding: 0.25rem 0.55rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background-color: #dcfce7; color: #15803d; }
+  .service-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.5rem 1rem; font-size: 0.85rem; color: #475569; }
+  .service-chip-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .service-chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.6rem; border-radius: 999px; background-color: #fff7ed; color: #ea580c; font-size: 0.7rem; font-weight: 700; }
+  .service-empty { text-align: center; padding: 2rem 1rem; color: #94a3b8; background: #f8fafc; border-radius: 0.85rem; border: 1px dashed #e2e8f0; }
 
   /* Recent Activity */
   .activity-summary { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
@@ -750,6 +771,12 @@ function App() {
   const [stripeSyncStage, setStripeSyncStage] = useState('connect');
   const [stripeMatches, setStripeMatches] = useState([]);
   const [stripeMatchSelection, setStripeMatchSelection] = useState(new Set());
+  const [stripeSyncStats, setStripeSyncStats] = useState({
+    source: '',
+    total: 0,
+    matched: 0,
+    unmatched: 0
+  });
   
   // Navigation State
   const [activeTab, setActiveTab] = useState('Clients');
@@ -838,38 +865,272 @@ function App() {
     return phone.replace(/[^\d+]/g, '');
   };
 
-  const buildStripeMatches = () => {
-    const sampleClients = clients.slice(0, 6);
-    return sampleClients.map((client, index) => {
-      const matchReasons = [];
-      if (index % 3 === 0) matchReasons.push('Mobile number');
-      if (index % 3 === 1) matchReasons.push('Company name');
-      if (index % 3 === 2) matchReasons.push('Contact name');
-      if (index === 4) matchReasons.push('Mobile number', 'Company name');
+  const normalizeValue = (value) => (value || '').toString().trim().toLowerCase();
+  const normalizeEmail = (email) => normalizeValue(email);
 
-      const stripeCustomer = {
-        name: matchReasons.includes('Contact name') ? client.contactName : `Billing - ${client.businessName}`,
+  const formatCurrency = (amount, currency = 'usd') => {
+    if (amount === null || amount === undefined || Number.isNaN(amount)) return '—';
+    const safeCurrency = currency ? currency.toUpperCase() : 'USD';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: safeCurrency
+    }).format(amount / 100);
+  };
+
+  const formatDateShort = (value) => {
+    if (!value) return 'Unknown date';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Unknown date';
+    return date.toLocaleDateString();
+  };
+
+  const getMonthlyRecurringRevenue = (subscriptions = []) => subscriptions.reduce((total, subscription) => {
+    const amount = subscription.amount || 0;
+    const quantity = subscription.quantity || 1;
+    const interval = subscription.interval || 'month';
+    let monthlyAmount = amount;
+    if (interval === 'year') {
+      monthlyAmount = amount / 12;
+    } else if (interval === 'week') {
+      monthlyAmount = amount * 4;
+    } else if (interval === 'day') {
+      monthlyAmount = amount * 30;
+    }
+    return total + monthlyAmount * quantity;
+  }, 0);
+
+  const buildStripeFixtureCustomers = () => {
+    const planCatalog = [
+      { name: 'Growth Retainer', amount: 150000, interval: 'month' },
+      { name: 'Performance Plus', amount: 245000, interval: 'month' },
+      { name: 'Enterprise Scale', amount: 480000, interval: 'month' },
+      { name: 'Local SEO Boost', amount: 99000, interval: 'month' }
+    ];
+
+    const addDays = (date, days) => {
+      const next = new Date(date);
+      next.setDate(next.getDate() + days);
+      return next;
+    };
+
+    const today = new Date();
+    const baseCustomers = clients.slice(0, 8).map((client, index) => {
+      const subscriptionCount = (index % 2) + 1;
+      const subscriptions = Array.from({ length: subscriptionCount }).map((_, subIndex) => {
+        const plan = planCatalog[(index + subIndex) % planCatalog.length];
+        return {
+          id: `sub_fixture_${client.id}_${subIndex}`,
+          status: 'active',
+          product: plan.name,
+          amount: plan.amount,
+          currency: 'usd',
+          interval: plan.interval,
+          quantity: subIndex + 1,
+          startedAt: addDays(today, -90 - subIndex * 30).toISOString(),
+          currentPeriodEnd: addDays(today, 15 + subIndex * 15).toISOString()
+        };
+      });
+
+      return {
+        id: `cus_fixture_${client.id}`,
+        name: client.contactName || `Billing - ${client.businessName}`,
         company: client.businessName,
         phone: client.phone,
         email: client.email || `billing@${client.businessName.toLowerCase().replace(/\s+/g, '')}.com`,
-        subscriptions: Math.max(1, (index % 3) + 1),
-        plan: ['Growth Retainer', 'Performance Plus', 'Enterprise Scale'][index % 3]
-      };
-
-      return {
-        id: `${client.id}-stripe`,
-        client,
-        stripeCustomer,
-        matchReasons,
-        confidence: matchReasons.length > 1 ? 'High confidence' : 'Likely match'
+        currency: 'usd',
+        subscriptions
       };
     });
+
+    const extraCustomers = [
+      {
+        id: 'cus_fixture_renewal',
+        name: 'Kayla Pearson',
+        company: 'Renewal Plumbing Co',
+        phone: '+61 412 993 441',
+        email: 'kayla@renewalplumbing.com',
+        currency: 'usd',
+        subscriptions: [
+          {
+            id: 'sub_fixture_renewal_1',
+            status: 'active',
+            product: 'Emergency Response',
+            amount: 185000,
+            currency: 'usd',
+            interval: 'month',
+            quantity: 1,
+            startedAt: addDays(today, -120).toISOString(),
+            currentPeriodEnd: addDays(today, 10).toISOString()
+          }
+        ]
+      },
+      {
+        id: 'cus_fixture_lumina',
+        name: 'Liam Rogers',
+        company: 'Lumina Events',
+        phone: '+61 400 221 815',
+        email: 'billing@luminaevents.com',
+        currency: 'usd',
+        subscriptions: [
+          {
+            id: 'sub_fixture_lumina_1',
+            status: 'active',
+            product: 'Launch Accelerator',
+            amount: 125000,
+            currency: 'usd',
+            interval: 'month',
+            quantity: 1,
+            startedAt: addDays(today, -60).toISOString(),
+            currentPeriodEnd: addDays(today, 22).toISOString()
+          }
+        ]
+      }
+    ];
+
+    return [...baseCustomers, ...extraCustomers];
+  };
+
+  const aggregateStripeCustomers = (subscriptions = []) => {
+    const byCustomer = new Map();
+    subscriptions.forEach(subscription => {
+      const customer = subscription.customer || {};
+      if (!customer.id) return;
+      const existing = byCustomer.get(customer.id) || {
+        id: customer.id,
+        name: customer.name || customer.description || 'Unnamed customer',
+        company: customer.name || customer.description || '',
+        phone: customer.phone || '',
+        email: customer.email || '',
+        currency: subscription.currency || 'usd',
+        subscriptions: []
+      };
+      existing.subscriptions.push({
+        id: subscription.id,
+        status: subscription.status,
+        product: subscription.plan?.nickname || subscription.plan?.product || subscription.plan?.id || 'Active plan',
+        amount: subscription.plan?.amount || subscription.items?.data?.[0]?.plan?.amount || 0,
+        currency: subscription.currency || subscription.plan?.currency || 'usd',
+        interval: subscription.plan?.interval || subscription.items?.data?.[0]?.plan?.interval || 'month',
+        quantity: subscription.quantity || subscription.items?.data?.[0]?.quantity || 1,
+        startedAt: subscription.start_date ? new Date(subscription.start_date * 1000).toISOString() : null,
+        currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
+      });
+      byCustomer.set(customer.id, existing);
+    });
+    return Array.from(byCustomer.values());
+  };
+
+  const fetchStripeActiveCustomers = async (apiKey) => {
+    const fallbackCustomers = buildStripeFixtureCustomers();
+    const fallback = {
+      customers: fallbackCustomers,
+      source: 'Sample data',
+      warning: 'Stripe API calls are blocked in the browser. Showing sample active subscribers.'
+    };
+
+    try {
+      const url = new URL('https://api.stripe.com/v1/subscriptions');
+      url.searchParams.set('status', 'active');
+      url.searchParams.set('limit', '100');
+      url.searchParams.append('expand[]', 'data.customer');
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${apiKey}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Stripe API error: ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const customers = aggregateStripeCustomers(payload.data || []);
+      return {
+        customers,
+        source: 'Stripe API'
+      };
+    } catch (error) {
+      return fallback;
+    }
+  };
+
+  const findStripeClientMatch = (stripeCustomer) => {
+    let bestMatch = null;
+    let bestReasons = [];
+    clients.forEach(client => {
+      const reasons = [];
+      if (stripeCustomer.email && normalizeEmail(client.email) === normalizeEmail(stripeCustomer.email)) {
+        reasons.push('Email');
+      }
+      if (stripeCustomer.phone && normalizePhoneNumber(client.phone) === normalizePhoneNumber(stripeCustomer.phone)) {
+        reasons.push('Phone');
+      }
+      if (stripeCustomer.company && normalizeValue(client.businessName) === normalizeValue(stripeCustomer.company)) {
+        reasons.push('Company');
+      }
+      if (stripeCustomer.name && normalizeValue(client.contactName) === normalizeValue(stripeCustomer.name)) {
+        reasons.push('Contact');
+      }
+
+      if (reasons.length > bestReasons.length) {
+        bestMatch = client;
+        bestReasons = reasons;
+      }
+    });
+
+    return { client: bestMatch, reasons: bestReasons };
+  };
+
+  const buildStripeMatches = (stripeCustomers) => stripeCustomers.map(customer => {
+    const { client, reasons } = findStripeClientMatch(customer);
+    const canSync = Boolean(client);
+    const confidence = reasons.length >= 2 ? 'High confidence' : reasons.length === 1 ? 'Likely match' : 'No match';
+    return {
+      id: `${customer.id}-${client?.id || 'unmatched'}`,
+      client,
+      stripeCustomer: customer,
+      matchReasons: reasons,
+      confidence,
+      canSync
+    };
+  });
+
+  const mergeStripeCustomerIntoClient = (client, stripeCustomer) => {
+    const existingSubscriptions = Array.isArray(client.stripeSubscriptions) ? client.stripeSubscriptions : [];
+    const existingIds = new Set(existingSubscriptions.map(subscription => subscription.id));
+    const incomingSubscriptions = Array.isArray(stripeCustomer.subscriptions) ? stripeCustomer.subscriptions : [];
+    const newSubscriptions = incomingSubscriptions.filter(subscription => !existingIds.has(subscription.id));
+    const stripeProfile = client.stripeProfile || {};
+
+    return {
+      updatedClient: {
+        ...client,
+        stripeProfile: {
+          ...stripeProfile,
+          customerId: stripeProfile.customerId ?? stripeCustomer.id,
+          name: stripeProfile.name ?? stripeCustomer.name,
+          email: stripeProfile.email ?? stripeCustomer.email,
+          phone: stripeProfile.phone ?? stripeCustomer.phone,
+          company: stripeProfile.company ?? stripeCustomer.company,
+          currency: stripeProfile.currency ?? stripeCustomer.currency
+        },
+        stripeSubscriptions: [...existingSubscriptions, ...newSubscriptions]
+      },
+      appendedCount: newSubscriptions.length
+    };
   };
 
   const openStripeSync = () => {
     setStripeApiKey('');
     setStripeMatches([]);
     setStripeMatchSelection(new Set());
+    setStripeSyncStats({
+      source: '',
+      total: 0,
+      matched: 0,
+      unmatched: 0
+    });
     setStripeSyncStage('connect');
     setIsStripeSyncOpen(true);
   };
@@ -879,22 +1140,35 @@ function App() {
     setStripeSyncStage('connect');
   };
 
-  const handleStripeConnect = () => {
+  const handleStripeConnect = async () => {
     if (!stripeApiKey.trim()) {
       showToast('error', 'Stripe key required', 'Enter your Stripe secret key to start syncing.');
       return;
     }
     setStripeSyncStage('loading');
-    setTimeout(() => {
-      const matches = buildStripeMatches();
-      setStripeMatches(matches);
-      setStripeMatchSelection(new Set(matches.map(match => match.id)));
-      setStripeSyncStage('review');
+    const { customers, source, warning } = await fetchStripeActiveCustomers(stripeApiKey.trim());
+    const matches = buildStripeMatches(customers);
+    const matchedCount = matches.filter(match => match.canSync).length;
+    const unmatchedCount = matches.length - matchedCount;
+    setStripeMatches(matches);
+    setStripeMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
+    setStripeSyncStats({
+      source,
+      total: matches.length,
+      matched: matchedCount,
+      unmatched: unmatchedCount
+    });
+    setStripeSyncStage('review');
+    if (warning) {
+      showToast('error', 'Stripe API fallback', warning);
+    } else {
       showToast('success', 'Stripe sync ready', `Pulled ${matches.length} active Stripe customers.`);
-    }, 1200);
+    }
   };
 
   const toggleStripeMatch = (id) => {
+    const match = stripeMatches.find(item => item.id === id);
+    if (match && !match.canSync) return;
     setStripeMatchSelection(prev => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -907,16 +1181,37 @@ function App() {
   };
 
   const toggleAllStripeMatches = () => {
-    if (stripeMatchSelection.size === stripeMatches.length) {
+    const selectableIds = stripeMatches.filter(match => match.canSync).map(match => match.id);
+    if (stripeMatchSelection.size === selectableIds.length) {
       setStripeMatchSelection(new Set());
     } else {
-      setStripeMatchSelection(new Set(stripeMatches.map(match => match.id)));
+      setStripeMatchSelection(new Set(selectableIds));
     }
   };
 
   const confirmStripeMatches = () => {
+    const selectedMatches = stripeMatches.filter(match => match.canSync && stripeMatchSelection.has(match.id));
+    let appendedSubscriptions = 0;
+    const updatedClients = clients.map(client => {
+      const match = selectedMatches.find(selected => selected.client?.id === client.id);
+      if (!match) return client;
+      const { updatedClient, appendedCount } = mergeStripeCustomerIntoClient(client, match.stripeCustomer);
+      appendedSubscriptions += appendedCount;
+      return updatedClient;
+    });
+    setClients(updatedClients);
+    if (selectedClient) {
+      const refreshedClient = updatedClients.find(client => client.id === selectedClient.id);
+      if (refreshedClient) {
+        setSelectedClient(refreshedClient);
+      }
+    }
     setStripeSyncStage('complete');
-    showToast('success', 'Stripe sync confirmed', 'Selected matches have been queued for review.');
+    showToast(
+      'success',
+      'Stripe sync confirmed',
+      `Updated ${selectedMatches.length} clients and appended ${appendedSubscriptions} subscriptions.`
+    );
   };
 
   const buildAircallAuthHeader = (tokenOverride, appIdOverride) => {
@@ -1627,6 +1922,8 @@ function App() {
   const selectedActivity = selectedClient
     ? (aircallActivity[selectedClient.id] || { items: [], loading: false, error: null, hasMore: false, nextPage: 1 })
     : { items: [], loading: false, error: null, hasMore: false, nextPage: 1 };
+  const selectedSubscriptions = selectedClient?.stripeSubscriptions || [];
+  const selectedStripeProfile = selectedClient?.stripeProfile || null;
 
   return (
     <>
@@ -2045,8 +2342,8 @@ function App() {
                   <div className="stripe-feature">
                     <span className="stripe-feature-icon"><ShieldCheck size={16} /></span>
                     <div>
-                      <div className="stripe-customer-title">Manual verification</div>
-                      <div className="stripe-customer-sub">Confirm or deny each proposed link before syncing.</div>
+                      <div className="stripe-customer-title">Append-only sync</div>
+                      <div className="stripe-customer-sub">Confirm matches to append missing Stripe subscription data.</div>
                     </div>
                   </div>
                 </div>
@@ -2073,12 +2370,17 @@ function App() {
                   <div>
                     <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Review Stripe matches</h3>
                     <p className="stripe-results-meta">
-                      {stripeMatches.length} Stripe customers with active subscriptions detected.
+                      {stripeSyncStats.total} active Stripe subscribers pulled
+                      {stripeSyncStats.source ? ` · Source: ${stripeSyncStats.source}` : ''}.
                     </p>
+                    <div className="stripe-customer-badges" style={{ marginTop: '0.5rem' }}>
+                      <span className="stripe-summary-pill">{stripeSyncStats.matched} matched</span>
+                      <span className="stripe-summary-pill">{stripeSyncStats.unmatched} unmatched</span>
+                    </div>
                   </div>
                   <div>
                     <button className="stripe-select-all" onClick={toggleAllStripeMatches}>
-                      {stripeMatchSelection.size === stripeMatches.length ? 'Deselect all' : 'Select all'}
+                      {stripeMatchSelection.size === stripeMatches.filter(match => match.canSync).length ? 'Deselect all' : 'Select all'}
                     </button>
                   </div>
                 </div>
@@ -2096,13 +2398,14 @@ function App() {
                     <tbody>
                       {stripeMatches.map((match) => {
                         const isSelected = stripeMatchSelection.has(match.id);
+                        const monthlyValue = getMonthlyRecurringRevenue(match.stripeCustomer.subscriptions);
                         return (
-                          <tr key={match.id}>
+                          <tr key={match.id} className={match.canSync ? '' : 'stripe-row-disabled'}>
                             <td>
                               <div
                                 className={`card-select-checkbox ${isSelected ? 'checked' : ''}`}
                                 onClick={() => toggleStripeMatch(match.id)}
-                                style={{ width: '1.25rem', height: '1.25rem' }}
+                                style={{ width: '1.25rem', height: '1.25rem', cursor: match.canSync ? 'pointer' : 'not-allowed' }}
                               >
                                 {isSelected && <Check size={12} />}
                               </div>
@@ -2112,21 +2415,38 @@ function App() {
                                 <span className="stripe-customer-title">{match.stripeCustomer.name}</span>
                                 <span className="stripe-customer-sub">{match.stripeCustomer.company}</span>
                                 <span className="stripe-customer-sub">{match.stripeCustomer.email}</span>
-                                <span className="stripe-customer-sub">{match.stripeCustomer.subscriptions} active · {match.stripeCustomer.plan}</span>
+                                <span className="stripe-customer-sub">
+                                  {match.stripeCustomer.subscriptions.length} active · {formatCurrency(monthlyValue, match.stripeCustomer.currency)}/mo
+                                </span>
+                                <div className="stripe-customer-badges" style={{ marginTop: '0.35rem' }}>
+                                  {match.stripeCustomer.subscriptions.map(subscription => (
+                                    <span key={subscription.id} className="stripe-subscription-pill">
+                                      {subscription.product}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
                             </td>
                             <td>
-                              <div className="stripe-customer-card">
-                                <span className="stripe-customer-title">{match.client.businessName}</span>
-                                <span className="stripe-customer-sub">{match.client.contactName}</span>
-                                <span className="stripe-customer-sub">{match.client.phone}</span>
-                                <span className="stripe-customer-sub">{match.client.location}</span>
-                              </div>
+                              {match.client ? (
+                                <div className="stripe-customer-card">
+                                  <span className="stripe-customer-title">{match.client.businessName}</span>
+                                  <span className="stripe-customer-sub">{match.client.contactName}</span>
+                                  <span className="stripe-customer-sub">{match.client.phone}</span>
+                                  <span className="stripe-customer-sub">{match.client.location}</span>
+                                </div>
+                              ) : (
+                                <span className="stripe-no-match">No client match found</span>
+                              )}
                             </td>
                             <td>
-                              {match.matchReasons.map((reason) => (
-                                <span key={reason} className="stripe-match-pill">{reason}</span>
-                              ))}
+                              {match.matchReasons.length ? (
+                                match.matchReasons.map((reason) => (
+                                  <span key={reason} className="stripe-match-pill">{reason}</span>
+                                ))
+                              ) : (
+                                <span className="stripe-no-match">Awaiting manual match</span>
+                              )}
                             </td>
                             <td>
                               <span className="stripe-verify">{match.confidence}</span>
@@ -2150,7 +2470,7 @@ function App() {
               <div className="stripe-loading">
                 <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Sync queued successfully</h3>
                 <p className="stripe-subtitle">
-                  {stripeMatchSelection.size} customer matches have been confirmed and queued for syncing into your CRM.
+                  {stripeMatchSelection.size} customer matches were confirmed. Subscription services are now available in each client’s Services tab.
                 </p>
                 <div className="modal-actions" style={{ justifyContent: 'center' }}>
                   <button className="btn-primary" onClick={closeStripeSync}>Done</button>
@@ -2451,9 +2771,15 @@ function App() {
                     >
                       Recent Activity
                     </button>
+                    <button
+                      className={`detail-tab ${clientDetailTab === 'services' ? 'active' : ''}`}
+                      onClick={() => setClientDetailTab('services')}
+                    >
+                      Services
+                    </button>
                   </div>
 
-                  {clientDetailTab === 'overview' ? (
+                  {clientDetailTab === 'overview' && (
                     <>
                     {/* Content Body */}
                     <div className="detail-grid">
@@ -2648,7 +2974,9 @@ function App() {
                     )}
                   </div>
                   </>
-                  ) : (
+                  )}
+
+                  {clientDetailTab === 'activity' && (
                     <div>
                       <div className="activity-summary">
                         <div>
@@ -2686,6 +3014,58 @@ function App() {
                         )
                       )}
 
+                    </div>
+                  )}
+
+                  {clientDetailTab === 'services' && (
+                    <div>
+                      <div className="services-header">
+                        <div>
+                          <h3 className="section-label">Stripe Services</h3>
+                          <div className="services-meta">
+                            {selectedSubscriptions.length} active subscription{selectedSubscriptions.length === 1 ? '' : 's'} synced
+                            {selectedStripeProfile?.customerId ? ` · Customer ID: ${selectedStripeProfile.customerId}` : ''}
+                          </div>
+                        </div>
+                      </div>
+
+                      {selectedSubscriptions.length > 0 ? (
+                        <div className="services-grid">
+                          {selectedSubscriptions.map(subscription => (
+                            <div key={subscription.id} className="service-card">
+                              <div className="service-card-header">
+                                <div>
+                                  <div className="service-name">{subscription.product}</div>
+                                  <div className="service-plan">Billed {subscription.interval}</div>
+                                </div>
+                                <span className="service-status">{subscription.status}</span>
+                              </div>
+                              <div className="service-meta-grid">
+                                <div>
+                                  <strong>Amount:</strong> {formatCurrency(subscription.amount, subscription.currency)} / {subscription.interval}
+                                </div>
+                                <div>
+                                  <strong>Quantity:</strong> {subscription.quantity}
+                                </div>
+                                <div>
+                                  <strong>Started:</strong> {formatDateShort(subscription.startedAt)}
+                                </div>
+                                <div>
+                                  <strong>Renews:</strong> {formatDateShort(subscription.currentPeriodEnd)}
+                                </div>
+                              </div>
+                              <div className="service-chip-row">
+                                <span className="service-chip">Status: {subscription.status}</span>
+                                <span className="service-chip">Billing: {subscription.interval}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="service-empty">
+                          No Stripe subscriptions have been synced for this client yet. Use Sync with Stripe to pull active services.
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
