@@ -134,6 +134,13 @@ export const UserCircle = createIcon(
     <path d="M6.5 18a6 6 0 0 1 11 0" />
   </>
 );
+export const Eye = createIcon(
+  'Eye',
+  <>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+    <circle cx="12" cy="12" r="3" />
+  </>
+);
 export const X = createIcon(
   'X',
   <>
@@ -150,7 +157,14 @@ export const Edit2 = createIcon(
 );
 export const Save = createIcon('Save');
 export const ChevronRight = createIcon('ChevronRight');
-export const LogOut = createIcon('LogOut');
+export const LogOut = createIcon(
+  'LogOut',
+  <>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </>
+);
 export const FileSpreadsheet = createIcon(
   'FileSpreadsheet',
   <>

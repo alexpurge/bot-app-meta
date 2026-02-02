@@ -17,7 +17,6 @@ import {
   X, 
   Edit2,
   Save,
-  ChevronRight,
   LogOut,
   FileSpreadsheet,
   Table,
@@ -39,7 +38,8 @@ import {
   Pause,
   XSquare,
   ChevronDown,
-  ArrowRight
+  ArrowRight,
+  Eye
 } from './lucide-react';
 
 // --- CSS STYLES (Vanilla CSS) ---
@@ -723,12 +723,9 @@ function App() {
   const [aircallAppIdInput, setAircallAppIdInput] = useState(() => localStorage.getItem('aircallAppId') || AIRCALL_APP_ID);
   const [isAircallLoggedIn, setIsAircallLoggedIn] = useState(() => Boolean(localStorage.getItem('aircallToken')));
   const [isSubmittingAircallToken, setIsSubmittingAircallToken] = useState(false);
-  const [isInitializingAircall, setIsInitializingAircall] = useState(false);
-  const [initProgress, setInitProgress] = useState({ current: 0, total: 0 });
   const [aircallActivity, setAircallActivity] = useState({});
   const [toast, setToast] = useState(null);
   const [clientDetailTab, setClientDetailTab] = useState('overview');
-  const [hasInitializedAircall, setHasInitializedAircall] = useState(false);
 
   // Import Review State
   const [isImportReviewOpen, setIsImportReviewOpen] = useState(false);
@@ -754,13 +751,6 @@ function App() {
       setClientDetailTab('overview');
     }
   }, [selectedClient]);
-
-  useEffect(() => {
-    if (aircallToken && isAircallLoggedIn && !hasInitializedAircall && !isSubmittingAircallToken) {
-      setHasInitializedAircall(true);
-      initializeAircall(aircallToken);
-    }
-  }, [aircallToken, isAircallLoggedIn, hasInitializedAircall, isSubmittingAircallToken]);
 
   // Form State
   const [newClient, setNewClient] = useState({
@@ -911,30 +901,6 @@ function App() {
     }
   };
 
-  const initializeAircall = async (token) => {
-    const clientsWithPhones = clients.filter(client => client.phone);
-    setIsInitializingAircall(true);
-    setInitProgress({ current: 0, total: clientsWithPhones.length });
-
-    let failures = 0;
-    for (const client of clientsWithPhones) {
-      try {
-        await fetchAircallInteractions(client, { page: 1, append: false, notify: false, token });
-      } catch {
-        failures += 1;
-      } finally {
-        setInitProgress(prev => ({ ...prev, current: prev.current + 1 }));
-      }
-    }
-
-    setIsInitializingAircall(false);
-    if (failures > 0) {
-      showToast('error', 'Aircall initialization incomplete', `${failures} client syncs did not complete. Review the recent activity tab for details.`);
-    } else {
-      showToast('success', 'Aircall connected', 'All client phone histories are ready.');
-    }
-  };
-
   const handleAircallLogin = async (event) => {
     event.preventDefault();
     const trimmedToken = aircallTokenInput.trim();
@@ -955,8 +921,6 @@ function App() {
       setAircallToken(trimmedToken);
       setAircallAppId(trimmedAppId);
       setIsAircallLoggedIn(true);
-      setHasInitializedAircall(true);
-      await initializeAircall(trimmedToken);
       setAircallTokenInput('');
       setAircallAppIdInput(trimmedAppId);
     } catch (error) {
@@ -964,6 +928,18 @@ function App() {
     } finally {
       setIsSubmittingAircallToken(false);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('aircallToken');
+    localStorage.removeItem('aircallAppId');
+    setAircallToken('');
+    setAircallAppId('');
+    setAircallTokenInput('');
+    setAircallAppIdInput('');
+    setAircallActivity({});
+    setSelectedClient(null);
+    setIsAircallLoggedIn(false);
   };
 
   const handleAddSubmit = (e) => {
@@ -1407,7 +1383,6 @@ function App() {
   }, {});
 
   const hasErrors = Object.keys(errorGroups).length > 0;
-  const initPercent = initProgress.total ? Math.round((initProgress.current / initProgress.total) * 100) : 0;
   const selectedActivity = selectedClient
     ? (aircallActivity[selectedClient.id] || { items: [], loading: false, error: null, hasMore: false, nextPage: 1 })
     : { items: [], loading: false, error: null, hasMore: false, nextPage: 1 };
@@ -1462,7 +1437,7 @@ function App() {
                 <div className="login-helper">Your App ID is stored locally in this browser only.</div>
               </div>
               <button className="login-btn" type="submit" disabled={isSubmittingAircallToken}>
-                {isSubmittingAircallToken ? 'Initializing Aircall…' : 'Initialize Aircall'}
+                {isSubmittingAircallToken ? 'Connecting to Aircall…' : 'Connect Aircall'}
                 {isSubmittingAircallToken && (
                   <span className="login-btn-loading-bar" />
                 )}
@@ -1558,7 +1533,7 @@ function App() {
           </div>
 
           <div className="sidebar-footer">
-            <button className="nav-item">
+            <button className="nav-item" onClick={handleLogout}>
               <LogOut size={18} />
               <span>Logout</span>
             </button>
@@ -1570,14 +1545,6 @@ function App() {
           
           {/* Header */}
           <header className="header-area">
-            {isInitializingAircall && (
-              <div style={{ width: '100%' }}>
-                <div className="global-loading-label">Syncing Aircall activity ({initProgress.current}/{initProgress.total})</div>
-                <div className="global-loading">
-                  <div className="global-loading-bar" style={{ width: `${initPercent}%` }} />
-                </div>
-              </div>
-            )}
             <div>
               <h2 className="page-title">
                 {activeTab === 'Clients' && 'Client Database'}
@@ -1744,7 +1711,7 @@ function App() {
                   <div className="card-footer">
                     <span className="service-tag">{client.service}</span>
                     <button className="view-link">
-                      View Details <ChevronRight size={16} />
+                      View Details <Eye size={16} />
                     </button>
                   </div>
                 </div>
