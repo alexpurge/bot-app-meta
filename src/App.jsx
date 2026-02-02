@@ -323,6 +323,11 @@ const STYLES = `
   .stripe-customer-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .stripe-subscription-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border-radius: 999px; background-color: #eef2ff; color: #4338ca; font-size: 0.7rem; font-weight: 700; }
   .stripe-no-match { color: #94a3b8; font-size: 0.8rem; font-style: italic; }
+  .stripe-merge-grid { display: grid; gap: 1.5rem; }
+  .stripe-merge-card { border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; background: #ffffff; display: grid; gap: 1rem; }
+  .stripe-merge-card h4 { margin: 0; font-size: 1rem; color: #0f172a; }
+  .stripe-merge-note { color: #64748b; font-size: 0.9rem; margin: 0; }
+  .stripe-merge-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
 
   /* Aircall Login */
   .login-page { min-height: 100vh; background: #0b0b0b; display: flex; align-items: center; justify-content: center; padding: 2rem; }
@@ -771,6 +776,10 @@ function App() {
   const [stripeSyncStage, setStripeSyncStage] = useState('connect');
   const [stripeMatches, setStripeMatches] = useState([]);
   const [stripeMatchSelection, setStripeMatchSelection] = useState(new Set());
+  const [stripeMergeSelection, setStripeMergeSelection] = useState({
+    stripeCustomerId: '',
+    clientId: ''
+  });
   const [stripeSyncStats, setStripeSyncStats] = useState({
     source: '',
     total: 0,
@@ -907,6 +916,8 @@ function App() {
       { name: 'Local SEO Boost', amount: 99000, interval: 'month' }
     ];
 
+    const statusPool = ['active', 'trialing', 'past_due', 'canceled', 'paused'];
+
     const addDays = (date, days) => {
       const next = new Date(date);
       next.setDate(next.getDate() + days);
@@ -918,16 +929,19 @@ function App() {
       const subscriptionCount = (index % 2) + 1;
       const subscriptions = Array.from({ length: subscriptionCount }).map((_, subIndex) => {
         const plan = planCatalog[(index + subIndex) % planCatalog.length];
+        const status = statusPool[(index + subIndex) % statusPool.length];
         return {
           id: `sub_fixture_${client.id}_${subIndex}`,
-          status: 'active',
+          status,
           product: plan.name,
           amount: plan.amount,
           currency: 'usd',
           interval: plan.interval,
           quantity: subIndex + 1,
           startedAt: addDays(today, -90 - subIndex * 30).toISOString(),
-          currentPeriodEnd: addDays(today, 15 + subIndex * 15).toISOString()
+          currentPeriodEnd: addDays(today, 15 + subIndex * 15).toISOString(),
+          cancelAt: status === 'canceled' ? addDays(today, -5).toISOString() : null,
+          pausedAt: status === 'paused' ? addDays(today, -3).toISOString() : null
         };
       });
 
@@ -953,14 +967,15 @@ function App() {
         subscriptions: [
           {
             id: 'sub_fixture_renewal_1',
-            status: 'active',
+            status: 'canceled',
             product: 'Emergency Response',
             amount: 185000,
             currency: 'usd',
             interval: 'month',
             quantity: 1,
             startedAt: addDays(today, -120).toISOString(),
-            currentPeriodEnd: addDays(today, 10).toISOString()
+            currentPeriodEnd: addDays(today, 10).toISOString(),
+            cancelAt: addDays(today, -8).toISOString()
           }
         ]
       },
@@ -974,26 +989,49 @@ function App() {
         subscriptions: [
           {
             id: 'sub_fixture_lumina_1',
-            status: 'active',
+            status: 'paused',
             product: 'Launch Accelerator',
             amount: 125000,
             currency: 'usd',
             interval: 'month',
             quantity: 1,
             startedAt: addDays(today, -60).toISOString(),
-            currentPeriodEnd: addDays(today, 22).toISOString()
+            currentPeriodEnd: addDays(today, 22).toISOString(),
+            pausedAt: addDays(today, -4).toISOString()
           }
         ]
+      },
+      {
+        id: 'cus_fixture_idle',
+        name: 'Marisol Drake',
+        company: 'Harbor & Co Events',
+        phone: '+61 412 333 222',
+        email: 'accounts@harborco.com',
+        currency: 'usd',
+        subscriptions: []
       }
     ];
 
     return [...baseCustomers, ...extraCustomers];
   };
 
-  const aggregateStripeCustomers = (subscriptions = []) => {
+  const buildStripeCustomerRecords = (customers = [], subscriptions = []) => {
     const byCustomer = new Map();
+    customers.forEach(customer => {
+      if (!customer?.id) return;
+      byCustomer.set(customer.id, {
+        id: customer.id,
+        name: customer.name || customer.description || customer.email || 'Unnamed customer',
+        company: customer.name || customer.description || '',
+        phone: customer.phone || '',
+        email: customer.email || '',
+        currency: customer.currency || 'usd',
+        subscriptions: []
+      });
+    });
+
     subscriptions.forEach(subscription => {
-      const customer = subscription.customer || {};
+      const customer = typeof subscription.customer === 'string' ? { id: subscription.customer } : subscription.customer || {};
       if (!customer.id) return;
       const existing = byCustomer.get(customer.id) || {
         id: customer.id,
@@ -1007,45 +1045,62 @@ function App() {
       existing.subscriptions.push({
         id: subscription.id,
         status: subscription.status,
-        product: subscription.plan?.nickname || subscription.plan?.product || subscription.plan?.id || 'Active plan',
+        product: subscription.plan?.nickname || subscription.plan?.product || subscription.plan?.id || 'Subscription',
         amount: subscription.plan?.amount || subscription.items?.data?.[0]?.plan?.amount || 0,
         currency: subscription.currency || subscription.plan?.currency || 'usd',
         interval: subscription.plan?.interval || subscription.items?.data?.[0]?.plan?.interval || 'month',
         quantity: subscription.quantity || subscription.items?.data?.[0]?.quantity || 1,
         startedAt: subscription.start_date ? new Date(subscription.start_date * 1000).toISOString() : null,
-        currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
+        currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
+        canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+        cancelAt: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
+        pauseBehavior: subscription.pause_collection?.behavior || null
       });
       byCustomer.set(customer.id, existing);
     });
+
     return Array.from(byCustomer.values());
   };
 
-  const fetchStripeActiveCustomers = async (apiKey) => {
+  const fetchStripeCustomers = async (apiKey) => {
     const fallbackCustomers = buildStripeFixtureCustomers();
     const fallback = {
       customers: fallbackCustomers,
       source: 'Sample data',
-      warning: 'Stripe API calls are blocked in the browser. Showing sample active subscribers.'
+      warning: 'Stripe API calls are blocked in the browser. Showing sample Stripe customers.'
     };
 
     try {
-      const url = new URL('https://api.stripe.com/v1/subscriptions');
-      url.searchParams.set('status', 'active');
-      url.searchParams.set('limit', '100');
-      url.searchParams.append('expand[]', 'data.customer');
+      const customersUrl = new URL('https://api.stripe.com/v1/customers');
+      customersUrl.searchParams.set('limit', '100');
+      const subscriptionsUrl = new URL('https://api.stripe.com/v1/subscriptions');
+      subscriptionsUrl.searchParams.set('status', 'all');
+      subscriptionsUrl.searchParams.set('limit', '100');
+      subscriptionsUrl.searchParams.append('expand[]', 'data.customer');
 
-      const response = await fetch(url.toString(), {
-        headers: {
-          Authorization: `Bearer ${apiKey}`
-        }
-      });
+      const [customersResponse, subscriptionsResponse] = await Promise.all([
+        fetch(customersUrl.toString(), {
+          headers: {
+            Authorization: `Bearer ${apiKey}`
+          }
+        }),
+        fetch(subscriptionsUrl.toString(), {
+          headers: {
+            Authorization: `Bearer ${apiKey}`
+          }
+        })
+      ]);
 
-      if (!response.ok) {
-        throw new Error(`Stripe API error: ${response.status}`);
+      if (!customersResponse.ok) {
+        throw new Error(`Stripe API error: ${customersResponse.status}`);
+      }
+      if (!subscriptionsResponse.ok) {
+        throw new Error(`Stripe API error: ${subscriptionsResponse.status}`);
       }
 
-      const payload = await response.json();
-      const customers = aggregateStripeCustomers(payload.data || []);
+      const customersPayload = await customersResponse.json();
+      const subscriptionsPayload = await subscriptionsResponse.json();
+      const customers = buildStripeCustomerRecords(customersPayload.data || [], subscriptionsPayload.data || []);
       return {
         customers,
         source: 'Stripe API'
@@ -1125,6 +1180,10 @@ function App() {
     setStripeApiKey('');
     setStripeMatches([]);
     setStripeMatchSelection(new Set());
+    setStripeMergeSelection({
+      stripeCustomerId: '',
+      clientId: ''
+    });
     setStripeSyncStats({
       source: '',
       total: 0,
@@ -1146,7 +1205,7 @@ function App() {
       return;
     }
     setStripeSyncStage('loading');
-    const { customers, source, warning } = await fetchStripeActiveCustomers(stripeApiKey.trim());
+    const { customers, source, warning } = await fetchStripeCustomers(stripeApiKey.trim());
     const matches = buildStripeMatches(customers);
     const matchedCount = matches.filter(match => match.canSync).length;
     const unmatchedCount = matches.length - matchedCount;
@@ -1162,7 +1221,7 @@ function App() {
     if (warning) {
       showToast('error', 'Stripe API fallback', warning);
     } else {
-      showToast('success', 'Stripe sync ready', `Pulled ${matches.length} active Stripe customers.`);
+      showToast('success', 'Stripe sync ready', `Pulled ${matches.length} Stripe customers.`);
     }
   };
 
@@ -1206,11 +1265,59 @@ function App() {
         setSelectedClient(refreshedClient);
       }
     }
-    setStripeSyncStage('complete');
+    const matchedClientIds = new Set(stripeMatches.filter(match => match.client).map(match => match.client.id));
+    const hasUnmatchedStripe = stripeMatches.some(match => !match.client);
+    const hasUnmatchedClients = updatedClients.some(client => !matchedClientIds.has(client.id));
+    setStripeSyncStage(hasUnmatchedStripe || hasUnmatchedClients ? 'merge' : 'complete');
     showToast(
       'success',
       'Stripe sync confirmed',
       `Updated ${selectedMatches.length} clients and appended ${appendedSubscriptions} subscriptions.`
+    );
+  };
+
+  const stripeMatchedClientIds = new Set(stripeMatches.filter(match => match.client).map(match => match.client.id));
+  const stripeUnmatchedCustomers = stripeMatches.filter(match => !match.client);
+  const stripeUnmatchedClients = clients.filter(client => !stripeMatchedClientIds.has(client.id));
+
+  const handleStripeMergeSelection = (type, id) => {
+    setStripeMergeSelection(prev => ({
+      ...prev,
+      [type]: prev[type] === id ? '' : id
+    }));
+  };
+
+  const handleStripeManualMerge = () => {
+    if (!stripeMergeSelection.stripeCustomerId || !stripeMergeSelection.clientId) {
+      return;
+    }
+    const stripeMatch = stripeMatches.find(match => match.stripeCustomer.id === stripeMergeSelection.stripeCustomerId);
+    const client = clients.find(item => item.id === stripeMergeSelection.clientId);
+    if (!stripeMatch || !client) return;
+    const { updatedClient, appendedCount } = mergeStripeCustomerIntoClient(client, stripeMatch.stripeCustomer);
+    const updatedClients = clients.map(item => (item.id === client.id ? updatedClient : item));
+    setClients(updatedClients);
+    if (selectedClient?.id === client.id) {
+      setSelectedClient(updatedClient);
+    }
+    setStripeMatches(prev => prev.map(match => {
+      if (match.stripeCustomer.id !== stripeMatch.stripeCustomer.id) return match;
+      return {
+        ...match,
+        client: updatedClient,
+        matchReasons: ['Manual'],
+        confidence: 'Manual match',
+        canSync: true
+      };
+    }));
+    setStripeMergeSelection({
+      stripeCustomerId: '',
+      clientId: ''
+    });
+    showToast(
+      'success',
+      'Manual merge complete',
+      `Merged ${stripeMatch.stripeCustomer.name} into ${updatedClient.businessName} and added ${appendedCount} subscriptions.`
     );
   };
 
@@ -2286,9 +2393,9 @@ function App() {
             <div className="stripe-modal-header">
               <div>
                 <span className="section-label">Stripe Sync</span>
-                <h2 className="modal-title">Sync active Stripe subscribers</h2>
+                <h2 className="modal-title">Sync Stripe customers</h2>
                 <p className="stripe-subtitle">
-                  Connect your Stripe API key to pull all active subscription customers and review matches with your client database.
+                  Connect your Stripe API key to pull every Stripe customer, match them to your client database, and merge any remaining records.
                 </p>
               </div>
               <span className="stripe-pill">
@@ -2303,8 +2410,11 @@ function App() {
               <span className={`stripe-step ${stripeSyncStage === 'loading' ? 'active' : stripeSyncStage === 'review' || stripeSyncStage === 'complete' ? 'complete' : ''}`}>
                 <Table size={14} /> Pull Stripe Customers
               </span>
-              <span className={`stripe-step ${stripeSyncStage === 'review' ? 'active' : stripeSyncStage === 'complete' ? 'complete' : ''}`}>
+              <span className={`stripe-step ${stripeSyncStage === 'review' ? 'active' : stripeSyncStage === 'merge' || stripeSyncStage === 'complete' ? 'complete' : ''}`}>
                 <CheckCircle size={14} /> Match Review
+              </span>
+              <span className={`stripe-step ${stripeSyncStage === 'merge' ? 'active' : stripeSyncStage === 'complete' ? 'complete' : ''}`}>
+                <Users size={14} /> Merge
               </span>
             </div>
 
@@ -2321,15 +2431,15 @@ function App() {
                     onChange={(event) => setStripeApiKey(event.target.value)}
                   />
                   <p className="stripe-subtitle" style={{ marginTop: '0.5rem' }}>
-                    We never store your key locally. This is used to request active subscription customers from Stripe.
+                    We never store your key locally. This is used to request every customer and their subscription history from Stripe.
                   </p>
                 </div>
                 <div className="stripe-feature-grid">
                   <div className="stripe-feature">
                     <span className="stripe-feature-icon"><Table size={16} /></span>
                     <div>
-                      <div className="stripe-customer-title">Full subscriber pull</div>
-                      <div className="stripe-customer-sub">Fetch every active customer with live subscriptions.</div>
+                      <div className="stripe-customer-title">Full customer pull</div>
+                      <div className="stripe-customer-sub">Fetch every Stripe customer and subscription status.</div>
                     </div>
                   </div>
                   <div className="stripe-feature">
@@ -2358,8 +2468,8 @@ function App() {
 
             {stripeSyncStage === 'loading' && (
               <div className="stripe-loading">
-                <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Pulling Stripe subscribers...</h3>
-                <p className="stripe-subtitle">Fetching active customers and preparing match suggestions.</p>
+                <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Pulling Stripe customers...</h3>
+                <p className="stripe-subtitle">Fetching customers and preparing match suggestions.</p>
                 <div className="stripe-loading-bar" />
               </div>
             )}
@@ -2370,7 +2480,7 @@ function App() {
                   <div>
                     <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Review Stripe matches</h3>
                     <p className="stripe-results-meta">
-                      {stripeSyncStats.total} active Stripe subscribers pulled
+                      {stripeSyncStats.total} Stripe customers pulled
                       {stripeSyncStats.source ? ` · Source: ${stripeSyncStats.source}` : ''}.
                     </p>
                     <div className="stripe-customer-badges" style={{ marginTop: '0.5rem' }}>
@@ -2398,7 +2508,8 @@ function App() {
                     <tbody>
                       {stripeMatches.map((match) => {
                         const isSelected = stripeMatchSelection.has(match.id);
-                        const monthlyValue = getMonthlyRecurringRevenue(match.stripeCustomer.subscriptions);
+                        const activeSubscriptions = match.stripeCustomer.subscriptions.filter(subscription => subscription.status === 'active');
+                        const monthlyValue = getMonthlyRecurringRevenue(activeSubscriptions);
                         return (
                           <tr key={match.id} className={match.canSync ? '' : 'stripe-row-disabled'}>
                             <td>
@@ -2416,7 +2527,7 @@ function App() {
                                 <span className="stripe-customer-sub">{match.stripeCustomer.company}</span>
                                 <span className="stripe-customer-sub">{match.stripeCustomer.email}</span>
                                 <span className="stripe-customer-sub">
-                                  {match.stripeCustomer.subscriptions.length} active · {formatCurrency(monthlyValue, match.stripeCustomer.currency)}/mo
+                                  {match.stripeCustomer.subscriptions.length} total · {activeSubscriptions.length} active · {formatCurrency(monthlyValue, match.stripeCustomer.currency)}/mo
                                 </span>
                                 <div className="stripe-customer-badges" style={{ marginTop: '0.35rem' }}>
                                   {match.stripeCustomer.subscriptions.map(subscription => (
@@ -2460,8 +2571,141 @@ function App() {
                 <div className="stripe-review-actions">
                   <button className="btn-ghost" onClick={() => setStripeSyncStage('connect')}>Back</button>
                   <button className="btn-primary" onClick={confirmStripeMatches} disabled={stripeMatchSelection.size === 0}>
-                    Confirm & Submit <ArrowRight size={16} />
+                    Confirm & Continue <ArrowRight size={16} />
                   </button>
+                </div>
+              </div>
+            )}
+
+            {stripeSyncStage === 'merge' && (
+              <div className="stripe-results">
+                <div className="stripe-results-header">
+                  <div>
+                    <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Merge unmatched records</h3>
+                    <p className="stripe-results-meta">
+                      {stripeUnmatchedCustomers.length} Stripe customers without a client match · {stripeUnmatchedClients.length} client records without a Stripe match.
+                    </p>
+                  </div>
+                </div>
+                <div className="stripe-merge-grid">
+                  <div className="stripe-merge-card">
+                    <div>
+                      <h4>Unmatched Stripe customers</h4>
+                      <p className="stripe-merge-note">Select one Stripe customer to pair with a client record.</p>
+                    </div>
+                    <div style={{ overflowX: 'auto', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                      <table className="stripe-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '60px' }}>Select</th>
+                            <th>Stripe Customer</th>
+                            <th>Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stripeUnmatchedCustomers.length === 0 ? (
+                            <tr>
+                              <td colSpan="3" className="stripe-no-match">All Stripe customers have a client match.</td>
+                            </tr>
+                          ) : (
+                            stripeUnmatchedCustomers.map(match => (
+                              <tr key={match.stripeCustomer.id}>
+                                <td>
+                                  <div
+                                    className={`card-select-checkbox ${stripeMergeSelection.stripeCustomerId === match.stripeCustomer.id ? 'checked' : ''}`}
+                                    onClick={() => handleStripeMergeSelection('stripeCustomerId', match.stripeCustomer.id)}
+                                    style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                                  >
+                                    {stripeMergeSelection.stripeCustomerId === match.stripeCustomer.id && <Check size={12} />}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-title">{match.stripeCustomer.name}</span>
+                                    <span className="stripe-customer-sub">{match.stripeCustomer.company}</span>
+                                    <span className="stripe-customer-sub">{match.stripeCustomer.email}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-sub">{match.stripeCustomer.phone}</span>
+                                    <span className="stripe-customer-sub">{match.stripeCustomer.subscriptions.length} subscriptions</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="stripe-merge-card">
+                    <div>
+                      <h4>Unmatched client records</h4>
+                      <p className="stripe-merge-note">Select one client record to merge with the chosen Stripe customer.</p>
+                    </div>
+                    <div style={{ overflowX: 'auto', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                      <table className="stripe-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '60px' }}>Select</th>
+                            <th>Client</th>
+                            <th>Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stripeUnmatchedClients.length === 0 ? (
+                            <tr>
+                              <td colSpan="3" className="stripe-no-match">All clients have a Stripe match.</td>
+                            </tr>
+                          ) : (
+                            stripeUnmatchedClients.map(client => (
+                              <tr key={client.id}>
+                                <td>
+                                  <div
+                                    className={`card-select-checkbox ${stripeMergeSelection.clientId === client.id ? 'checked' : ''}`}
+                                    onClick={() => handleStripeMergeSelection('clientId', client.id)}
+                                    style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                                  >
+                                    {stripeMergeSelection.clientId === client.id && <Check size={12} />}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-title">{client.businessName}</span>
+                                    <span className="stripe-customer-sub">{client.contactName}</span>
+                                    <span className="stripe-customer-sub">{client.email}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-sub">{client.phone}</span>
+                                    <span className="stripe-customer-sub">{client.location}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                <div className="stripe-merge-actions" style={{ marginTop: '1.5rem' }}>
+                  <button className="btn-ghost" onClick={() => setStripeSyncStage('review')}>Back</button>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={handleStripeManualMerge}
+                      disabled={!stripeMergeSelection.stripeCustomerId || !stripeMergeSelection.clientId}
+                    >
+                      Merge Selected
+                    </button>
+                    <button className="btn-primary" onClick={() => setStripeSyncStage('complete')}>
+                      Finish Sync <ArrowRight size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -2470,7 +2714,7 @@ function App() {
               <div className="stripe-loading">
                 <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Sync queued successfully</h3>
                 <p className="stripe-subtitle">
-                  {stripeMatchSelection.size} customer matches were confirmed. Subscription services are now available in each client’s Services tab.
+                  Stripe customer data has been synced. Subscription services are now available in each client’s Services tab.
                 </p>
                 <div className="modal-actions" style={{ justifyContent: 'center' }}>
                   <button className="btn-primary" onClick={closeStripeSync}>Done</button>
@@ -3023,7 +3267,7 @@ function App() {
                         <div>
                           <h3 className="section-label">Stripe Services</h3>
                           <div className="services-meta">
-                            {selectedSubscriptions.length} active subscription{selectedSubscriptions.length === 1 ? '' : 's'} synced
+                            {selectedSubscriptions.length} subscription{selectedSubscriptions.length === 1 ? '' : 's'} synced
                             {selectedStripeProfile?.customerId ? ` · Customer ID: ${selectedStripeProfile.customerId}` : ''}
                           </div>
                         </div>
@@ -3053,6 +3297,21 @@ function App() {
                                 <div>
                                   <strong>Renews:</strong> {formatDateShort(subscription.currentPeriodEnd)}
                                 </div>
+                                {subscription.cancelAt && (
+                                  <div>
+                                    <strong>Cancel date:</strong> {formatDateShort(subscription.cancelAt)}
+                                  </div>
+                                )}
+                                {subscription.canceledAt && (
+                                  <div>
+                                    <strong>Canceled:</strong> {formatDateShort(subscription.canceledAt)}
+                                  </div>
+                                )}
+                                {subscription.pauseBehavior && (
+                                  <div>
+                                    <strong>Pause:</strong> {subscription.pauseBehavior}
+                                  </div>
+                                )}
                               </div>
                               <div className="service-chip-row">
                                 <span className="service-chip">Status: {subscription.status}</span>
@@ -3063,7 +3322,7 @@ function App() {
                         </div>
                       ) : (
                         <div className="service-empty">
-                          No Stripe subscriptions have been synced for this client yet. Use Sync with Stripe to pull active services.
+                          No Stripe subscriptions have been synced for this client yet. Use Sync with Stripe to pull subscription history.
                         </div>
                       )}
                     </div>
