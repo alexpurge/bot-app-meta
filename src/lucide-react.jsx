@@ -236,3 +236,32 @@ export const ArrowRight = createIcon(
     <polyline points="12 5 19 12 12 19" />
   </>
 );
+export const LayoutDashboard = createIcon('LayoutDashboard');
+export const History = createIcon('History');
+export const PlusCircle = createIcon('PlusCircle');
+export const Calendar = createIcon('Calendar');
+export const TrendingUp = createIcon('TrendingUp');
+export const Activity = createIcon('Activity');
+export const CheckCircle2 = createIcon(
+  'CheckCircle2',
+  <>
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="9 12 12 15 16 10" />
+  </>
+);
+export const RefreshCw = createIcon('RefreshCw');
+export const ArrowUpRight = createIcon('ArrowUpRight');
+export const Database = createIcon('Database');
+export const Lock = createIcon('Lock');
+export const Key = createIcon('Key');
+export const Clock = createIcon('Clock');
+export const Loader2 = createIcon('Loader2');
+export const MousePointerClick = createIcon('MousePointerClick');
+export const BadgeDollarSign = createIcon('BadgeDollarSign');
+export const ShoppingBag = createIcon('ShoppingBag');
+export const Percent = createIcon('Percent');
+export const Star = createIcon('Star');
+export const ChevronLeft = createIcon('ChevronLeft');
+export const Power = createIcon('Power');
+export const SkipForward = createIcon('SkipForward');
+export const Minimize2 = createIcon('Minimize2');
