@@ -119,22 +119,30 @@ const STYLES = `
 
   .main-content.meta-risk {
     padding: 0;
-    overflow: hidden;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .main-content.meta-risk > div {
+    flex: 1;
+    min-height: 0;
   }
   
   /* Sidebar Elements */
   .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
   .brand { font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 0.6rem; letter-spacing: -0.05em; }
   .brand-logo-container { 
-    width: 46px; 
-    height: 46px; 
+    width: 40px; 
+    height: 40px; 
     display: inline-flex; 
     align-items: center; 
     justify-content: center; 
     background-color: var(--logo-bg); 
     border: none; 
+    border-radius: 8px;
+    overflow: hidden;
   }
-  .brand-logo { width: 36px; height: 36px; display: block; }
+  .brand-logo { width: 100%; height: 100%; display: block; object-fit: contain; }
   .brand-accent { color: var(--accent-primary); }
   .nav-menu { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
   .nav-item { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; background: transparent; text-align: left; font-size: 0.95rem; color: var(--text-secondary); }

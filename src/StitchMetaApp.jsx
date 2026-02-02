@@ -116,8 +116,9 @@ const STYLES = `
 
   /* --- UTILITIES --- */
   .app-wrapper { 
-    min-height: 100vh; 
-    width: 100vw;
+    min-height: 100%; 
+    height: 100%;
+    width: 100%;
     display: flex; 
     flex-direction: column; 
   }
@@ -139,6 +140,8 @@ const STYLES = `
     padding: 2rem; 
     box-sizing: border-box; 
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
   
   /* --- TYPOGRAPHY --- */
@@ -223,13 +226,12 @@ const STYLES = `
 
   /* --- LAYOUTS --- */
   .nav-bar {
-    height: 5rem;
     background: #000;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 2rem;
+    padding: 1.5rem 2rem;
     position: sticky;
     top: 0;
     left: 0;
@@ -351,7 +353,7 @@ const STYLES = `
   .btn-export:hover { border-color: var(--accent-primary); color: #fff; }
   .btn-export:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  .tab-group { display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem; overflow-x: auto; width: 100%; }
+  .tab-group { display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem; flex-wrap: wrap; width: 100%; }
   .tab-btn {
     background: none;
     border: none;
@@ -364,6 +366,12 @@ const STYLES = `
     align-items: center;
     gap: 0.5rem;
     white-space: nowrap;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+  .tab-btn:hover {
+    color: #fff;
+    border-bottom-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.08);
   }
   .tab-btn.active { color: #fff; border-bottom-color: var(--accent-primary); background: rgba(255, 93, 0, 0.05); }
 
