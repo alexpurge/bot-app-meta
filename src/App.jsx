@@ -131,7 +131,7 @@ const STYLES = `
   .import-label { font-size: 10px; margin-top: 4px; }
 
   /* Header */
-  .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+  .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; position: sticky; top: 0; z-index: 25; background-color: #f8f9fa; padding: 1rem 0; }
   .page-title { font-size: 1.875rem; font-weight: 700; color: #0f172a; margin: 0; }
   .page-subtitle { color: #64748b; margin-top: 0.25rem; font-size: 0.95rem; }
   
@@ -298,7 +298,7 @@ const STYLES = `
   .global-loading-label { font-size: 0.75rem; color: #64748b; margin-bottom: 0.35rem; }
 
   /* Notifications */
-  .toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+  .toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
   .toast { min-width: 260px; max-width: 360px; padding: 0.85rem 1rem; border-radius: 0.85rem; box-shadow: 0 15px 30px -15px rgba(15, 23, 42, 0.35); background: white; border-left: 4px solid #64748b; animation: slideInRight 0.25s ease; }
   .toast.success { border-left-color: #16a34a; }
   .toast.error { border-left-color: #ef4444; }
@@ -832,8 +832,6 @@ function App() {
         currentClientId: target.id,
         inFlight: true
       }));
-      showToast('info', 'Aircall scan started', `Fetching last 14 days for ${target.businessName}.`);
-
       const result = await fetchAircallInteractions(target, {
         page: 1,
         append: false,
@@ -845,8 +843,6 @@ function App() {
 
       if (result?.error) {
         showToast('error', 'Aircall scan failed', result.error);
-      } else {
-        showToast('success', 'Aircall scan complete', `Loaded ${result?.count ?? 0} interactions for ${target.businessName}.`);
       }
 
       aircallScanIndexRef.current = (aircallScanIndexRef.current + 1) % queue.length;
