@@ -1056,23 +1056,27 @@ function App() {
   const [googleAdsSyncStage, setGoogleAdsSyncStage] = useState('review');
   const [googleAdsMatches, setGoogleAdsMatches] = useState([]);
   const [googleAdsMatchSelection, setGoogleAdsMatchSelection] = useState(new Set());
+  const [googleAdsConflictSelection, setGoogleAdsConflictSelection] = useState(new Set());
   const [googleAdsMergeSelection, setGoogleAdsMergeSelection] = useState({
     accountId: '',
     clientId: ''
   });
   const [googleAdsAccountSearch, setGoogleAdsAccountSearch] = useState('');
   const [googleAdsClientSearch, setGoogleAdsClientSearch] = useState('');
+  const [googleAdsConflictSearch, setGoogleAdsConflictSearch] = useState('');
   const [googleAdsSyncStats, setGoogleAdsSyncStats] = useState({
     source: '',
     total: 0,
     available: 0,
     matched: 0,
     alreadySynced: 0,
-    unmatched: 0
+    unmatched: 0,
+    conflicts: 0
   });
   const [metaAdsSyncStage, setMetaAdsSyncStage] = useState('review');
   const [metaAdsMatches, setMetaAdsMatches] = useState([]);
   const [metaAdsMatchSelection, setMetaAdsMatchSelection] = useState(new Set());
+  const [metaAdsConflictSelection, setMetaAdsConflictSelection] = useState(new Set());
   const [metaAdsReviewFilter, setMetaAdsReviewFilter] = useState('all');
   const [metaAdsMergeSelection, setMetaAdsMergeSelection] = useState({
     accountId: '',
@@ -1080,13 +1084,15 @@ function App() {
   });
   const [metaAdsAccountSearch, setMetaAdsAccountSearch] = useState('');
   const [metaAdsClientSearch, setMetaAdsClientSearch] = useState('');
+  const [metaAdsConflictSearch, setMetaAdsConflictSearch] = useState('');
   const [metaAdsSyncStats, setMetaAdsSyncStats] = useState({
     source: '',
     total: 0,
     available: 0,
     matched: 0,
     alreadySynced: 0,
-    unmatched: 0
+    unmatched: 0,
+    conflicts: 0
   });
   const [isMetaAdsFinishing, setIsMetaAdsFinishing] = useState(false);
   
@@ -2015,7 +2021,33 @@ function App() {
       domainRoot
     };
   };
-  const countTokenOverlap = (tokensA, tokensB) => tokensA.filter(token => tokensB.includes(token)).length;
+  const buildTokenIndex = (entries) => {
+    const index = new Map();
+    entries.forEach(({ value, label }) => {
+      if (!value) return;
+      extractTokens(value).forEach(token => {
+        if (!index.has(token)) {
+          index.set(token, new Set());
+        }
+        index.get(token).add(label);
+      });
+    });
+    return index;
+  };
+
+  const getTokenOverlap = (tokensA, tokensB) => (
+    Array.from(tokensA.keys()).filter(token => tokensB.has(token))
+  );
+
+  const buildMatchDetails = (overlapTokens, accountTokens, clientTokens) => {
+    const details = [];
+    overlapTokens.forEach(token => {
+      const accountLabel = Array.from(accountTokens.get(token) || [])[0] || 'Account';
+      const clientLabel = Array.from(clientTokens.get(token) || [])[0] || 'Client';
+      details.push(`${token} (${accountLabel} ↔ ${clientLabel})`);
+    });
+    return details;
+  };
 
   const extractDomain = (value) => {
     if (!value) return '';
@@ -2024,106 +2056,62 @@ function App() {
   };
 
   const findAdsClientMatch = (account, type) => {
-    if (!account) return { client: null, reasons: [] };
-    const accountName = normalizeMatchValue(account.name);
-    const accountNameTokens = extractTokens(account.name);
+    if (!account) return { client: null, reasons: [], score: 0, candidates: [] };
     const accountEmailParts = extractEmailParts(account.billingEmail);
     const accountWebsiteDomain = extractDomain(account.website);
-    const accountWebsiteTokens = extractTokens(accountWebsiteDomain);
-    const billingDomain = extractDomain(account.billingEmail);
-    const websiteDomain = extractDomain(account.website);
+    const accountTokens = buildTokenIndex([
+      { value: account.name, label: 'Account name' },
+      { value: accountEmailParts.local, label: 'Billing email' },
+      { value: accountEmailParts.domain, label: 'Billing domain' },
+      { value: accountEmailParts.domainRoot, label: 'Billing domain' },
+      { value: accountWebsiteDomain, label: 'Website domain' }
+    ]);
 
-    let bestMatch = null;
-    let bestScore = 0;
-    let bestReasons = [];
-
-    clients.forEach(client => {
-      const clientName = normalizeMatchValue(client.businessName);
-      const clientContact = normalizeMatchValue(client.contactName);
-      const clientNameTokens = extractTokens(client.businessName);
-      const clientContactTokens = extractTokens(client.contactName);
+    const candidates = clients.flatMap(client => {
       const clientEmailParts = extractEmailParts(client.email);
-      const clientEmailDomain = extractDomain(client.email);
       const clientWebsiteDomain = extractDomain(client.website);
-      const clientWebsiteTokens = extractTokens(clientWebsiteDomain);
-      let score = 0;
-      const reasons = [];
+      const clientTokens = buildTokenIndex([
+        { value: client.businessName, label: 'Business name' },
+        { value: client.contactName, label: 'Contact name' },
+        { value: clientEmailParts.local, label: 'Client email' },
+        { value: clientEmailParts.domain, label: 'Client email domain' },
+        { value: clientEmailParts.domainRoot, label: 'Client email domain' },
+        { value: clientWebsiteDomain, label: 'Client website' }
+      ]);
 
-      if (clientName && (accountName.includes(clientName) || clientName.includes(accountName))) {
-        score += 3;
-        reasons.push('Business name');
-      }
-      const nameTokenOverlap = countTokenOverlap(accountNameTokens, clientNameTokens);
-      if (nameTokenOverlap >= 2) {
-        score += 3;
-        reasons.push('Business name overlap');
-      } else if (nameTokenOverlap === 1) {
-        score += 1;
-        reasons.push('Business name keyword');
-      }
-      const contactTokenOverlap = countTokenOverlap(accountNameTokens, clientContactTokens);
-      if (contactTokenOverlap >= 1) {
-        score += 1;
-        reasons.push('Contact name');
-      }
-      if (clientContact && accountName.includes(clientContact)) {
-        score += 1;
-        reasons.push('Contact name');
-      }
-      if (billingDomain && (billingDomain === clientEmailDomain || billingDomain === clientWebsiteDomain)) {
-        score += 2;
-        reasons.push('Billing domain');
-      }
-      if (websiteDomain && (websiteDomain === clientWebsiteDomain || websiteDomain === clientEmailDomain)) {
-        score += 2;
-        reasons.push('Website domain');
-      }
-      if (accountEmailParts.domain && (accountEmailParts.domain === clientEmailParts.domain || accountEmailParts.domain === clientWebsiteDomain)) {
-        score += 2;
-        reasons.push('Email domain');
-      }
-      const emailLocalOverlap = countTokenOverlap(accountEmailParts.localTokens, clientNameTokens);
-      if (emailLocalOverlap >= 1) {
-        score += 2;
-        reasons.push('Email name');
-      }
-      const emailDomainOverlap = countTokenOverlap(accountEmailParts.domainTokens, clientNameTokens);
-      if (emailDomainOverlap >= 1) {
-        score += 1;
-        reasons.push('Email domain keyword');
-      }
-      if (accountEmailParts.domainRoot && clientNameTokens.includes(accountEmailParts.domainRoot)) {
-        score += 1;
-        reasons.push('Email domain root');
-      }
-      const websiteTokenOverlap = countTokenOverlap(accountWebsiteTokens, clientNameTokens);
-      if (websiteTokenOverlap >= 1) {
-        score += 1;
-        reasons.push('Website keyword');
-      }
-      const clientEmailNameOverlap = countTokenOverlap(clientEmailParts.localTokens, accountNameTokens);
-      if (clientEmailNameOverlap >= 1) {
-        score += 1;
-        reasons.push('Client email name');
-      }
-      const clientWebsiteOverlap = countTokenOverlap(clientWebsiteTokens, accountNameTokens);
-      if (clientWebsiteOverlap >= 1) {
-        score += 1;
-        reasons.push('Client website keyword');
-      }
-
-      if (score > bestScore) {
-        bestMatch = client;
-        bestScore = score;
-        bestReasons = reasons;
-      }
+      const overlapTokens = getTokenOverlap(accountTokens, clientTokens);
+      if (overlapTokens.length === 0) return [];
+      const matchDetails = buildMatchDetails(overlapTokens, accountTokens, clientTokens);
+      return [{
+        client,
+        score: overlapTokens.length,
+        matchDetails,
+        reasons: matchDetails.slice(0, 3)
+      }];
     });
 
-    if (!bestMatch || bestScore === 0) {
-      return { client: null, reasons: [] };
+    if (candidates.length === 0) {
+      return { client: null, reasons: [], score: 0, candidates: [] };
     }
 
-    return { client: bestMatch, reasons: bestReasons };
+    if (candidates.length === 1) {
+      const [match] = candidates;
+      return {
+        client: match.client,
+        reasons: match.reasons,
+        score: match.score,
+        candidates
+      };
+    }
+
+    const sortedCandidates = [...candidates].sort((a, b) => b.score - a.score);
+    const best = sortedCandidates[0];
+    return {
+      client: null,
+      reasons: [],
+      score: best.score,
+      candidates: sortedCandidates
+    };
   };
 
   const normalizeMetaAccountId = (value) => {
@@ -2144,6 +2132,8 @@ function App() {
         .map(value => (type === 'meta' ? normalizeMetaAccountId(value) : value.toString()))
     );
     return accounts.map(account => {
+      const { client, reasons, score, candidates } = findAdsClientMatch(account, type);
+      const alreadySynced = existingAccountIds.has(account.id);
       const { client, reasons } = findAdsClientMatch(account, type);
       const accountId = type === 'meta' ? normalizeMetaAccountId(account.id) : account.id;
       const alreadySynced = existingAccountIds.has(accountId);
@@ -2154,7 +2144,10 @@ function App() {
         client,
         canSync: Boolean(client) && !alreadySynced,
         alreadySynced,
-        matchReasons
+        matchReasons,
+        matchScore: score,
+        isConflict: !alreadySynced && candidates.length > 1,
+        conflictCandidates: !alreadySynced ? candidates : []
       };
     });
   };
@@ -3008,9 +3001,11 @@ function App() {
 
   const openGoogleAdsSync = () => {
     setGoogleAdsMatchSelection(new Set());
+    setGoogleAdsConflictSelection(new Set());
     setGoogleAdsMergeSelection({ accountId: '', clientId: '' });
     setGoogleAdsAccountSearch('');
     setGoogleAdsClientSearch('');
+    setGoogleAdsConflictSearch('');
     setGoogleAdsSyncStage('loading');
     setIsGoogleAdsSyncOpen(true);
     void prepareGoogleAdsSync();
@@ -3029,6 +3024,7 @@ function App() {
     const matchedCount = matches.filter(match => match.client).length;
     const alreadySyncedCount = matches.filter(match => match.alreadySynced).length;
     const unmatchedCount = matches.filter(match => !match.client).length;
+    const conflictCount = matches.filter(match => match.isConflict).length;
     setGoogleAdsMatches(matches);
     setGoogleAdsMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
     setGoogleAdsSyncStats({
@@ -3037,7 +3033,8 @@ function App() {
       available: availableCount,
       matched: matchedCount,
       alreadySynced: alreadySyncedCount,
-      unmatched: unmatchedCount
+      unmatched: unmatchedCount,
+      conflicts: conflictCount
     });
     setGoogleAdsSyncStage('review');
     if (warning) {
@@ -3106,11 +3103,126 @@ function App() {
     });
     const hasUnmatchedAccounts = googleAdsMatches.some(match => !match.client);
     const hasUnmatchedClients = updatedClients.some(client => !client.googleAccountId);
-    setGoogleAdsSyncStage(hasUnmatchedAccounts || hasUnmatchedClients ? 'merge' : 'complete');
+    const hasConflicts = googleAdsMatches.some(match => match.isConflict);
+    setGoogleAdsSyncStage(hasConflicts ? 'conflicts' : (hasUnmatchedAccounts || hasUnmatchedClients ? 'merge' : 'complete'));
     showToast(
       'success',
       'Google Ads sync confirmed',
       `Linked ${selectedMatches.length} Google Ads accounts to client records.`
+    );
+  };
+
+  const googleAdsConflictOptions = googleAdsMatches
+    .filter(match => match.isConflict)
+    .flatMap(match => match.conflictCandidates.map(candidate => ({
+      id: `${match.account.id}-${candidate.client.id}`,
+      account: match.account,
+      client: candidate.client,
+      matchReasons: candidate.reasons,
+      matchScore: candidate.score,
+      conflictGroupId: match.account.id
+    })));
+  const normalizedGoogleAdsConflictSearch = googleAdsConflictSearch.trim().toLowerCase();
+  const googleAdsConflictSearchMatches = (value) => value?.toLowerCase().includes(normalizedGoogleAdsConflictSearch);
+  const filteredGoogleAdsConflictOptions = googleAdsConflictOptions.filter(option => (
+    !normalizedGoogleAdsConflictSearch
+    || googleAdsConflictSearchMatches(option.account?.name)
+    || googleAdsConflictSearchMatches(option.account?.billingEmail)
+    || googleAdsConflictSearchMatches(option.account?.website)
+    || googleAdsConflictSearchMatches(option.client?.businessName)
+    || googleAdsConflictSearchMatches(option.client?.contactName)
+    || googleAdsConflictSearchMatches(option.client?.email)
+  ));
+
+  const toggleGoogleAdsConflictSelection = (id, groupId) => {
+    setGoogleAdsConflictSelection(prev => {
+      const next = new Set(prev);
+      const groupOptions = googleAdsConflictOptions
+        .filter(option => option.conflictGroupId === groupId)
+        .map(option => option.id);
+      groupOptions.forEach(optionId => {
+        if (optionId !== id) {
+          next.delete(optionId);
+        }
+      });
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const confirmGoogleAdsConflicts = () => {
+    const selectedOptions = googleAdsConflictOptions.filter(option => googleAdsConflictSelection.has(option.id));
+    if (selectedOptions.length === 0) {
+      setGoogleAdsSyncStage('merge');
+      return;
+    }
+    const updatedClients = clients.map(client => {
+      const match = selectedOptions.find(selected => selected.client?.id === client.id);
+      if (!match) return client;
+      return mergeAdsAccountIntoClient(client, match.account, 'google');
+    });
+    setClients(updatedClients);
+    if (selectedClient) {
+      const refreshedClient = updatedClients.find(client => client.id === selectedClient.id);
+      if (refreshedClient) {
+        setSelectedClient(refreshedClient);
+      }
+    }
+    setGoogleByClient(prev => {
+      const next = { ...prev };
+      selectedOptions.forEach(match => {
+        if (!match.client) return;
+        next[match.client.id] = {
+          accountId: match.account.id,
+          status: 'success',
+          error: null,
+          logs: [],
+          source: 'google-sync',
+          data: {
+            overview: match.account.overview,
+            metrics: match.account.metrics,
+            team: match.account.team,
+            changeHistory: match.account.changeHistory
+          }
+        };
+      });
+      return next;
+    });
+    const nextMatches = googleAdsMatches.map(match => {
+      const selectedOption = selectedOptions.find(option => option.account.id === match.account.id);
+      if (!selectedOption) return match;
+      return {
+        ...match,
+        client: selectedOption.client,
+        matchReasons: selectedOption.matchReasons,
+        matchScore: selectedOption.matchScore,
+        canSync: true,
+        isConflict: false,
+        conflictCandidates: []
+      };
+    });
+    setGoogleAdsMatches(nextMatches);
+    setGoogleAdsConflictSelection(new Set());
+    setGoogleAdsConflictSearch('');
+    const hasUnmatchedAccounts = nextMatches.some(match => !match.client);
+    const hasUnmatchedClients = updatedClients.some(client => !client.googleAccountId);
+    const remainingConflicts = nextMatches.some(match => match.isConflict);
+    setGoogleAdsSyncStats(prev => ({
+      ...prev,
+      available: nextMatches.filter(match => match.canSync).length,
+      matched: nextMatches.filter(match => match.client).length,
+      unmatched: nextMatches.filter(match => !match.client).length,
+      conflicts: nextMatches.filter(match => match.isConflict).length
+    }));
+    setGoogleAdsSyncStage(remainingConflicts ? 'conflicts' : (hasUnmatchedAccounts || hasUnmatchedClients ? 'merge' : 'complete'));
+    showToast(
+      'success',
+      'Google Ads conflicts resolved',
+      `Linked ${selectedOptions.length} conflicting account${selectedOptions.length === 1 ? '' : 's'}.`
     );
   };
 
@@ -3190,9 +3302,11 @@ function App() {
 
   const openMetaAdsSync = () => {
     setMetaAdsMatchSelection(new Set());
+    setMetaAdsConflictSelection(new Set());
     setMetaAdsMergeSelection({ accountId: '', clientId: '' });
     setMetaAdsAccountSearch('');
     setMetaAdsClientSearch('');
+    setMetaAdsConflictSearch('');
     setMetaAdsReviewFilter('all');
     setMetaAdsSyncStage('loading');
     setIsMetaAdsSyncOpen(true);
@@ -3209,6 +3323,13 @@ function App() {
     setMetaAdsSyncStage('loading');
     const { accounts, source, warning } = await fetchMetaAdsAccounts();
     const matches = buildAdsMatches(accounts, 'meta');
+    const availableCount = matches.filter(match => match.canSync).length;
+    const matchedCount = matches.filter(match => match.client).length;
+    const alreadySyncedCount = matches.filter(match => match.alreadySynced).length;
+    const unmatchedCount = matches.filter(match => !match.client).length;
+    const conflictCount = matches.filter(match => match.isConflict).length;
+    setMetaAdsMatches(matches);
+    setMetaAdsMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
     const visibleMatches = matches.filter(match => !match.alreadySynced);
     const availableCount = visibleMatches.filter(match => match.canSync).length;
     const matchedCount = visibleMatches.filter(match => match.client).length;
@@ -3223,7 +3344,8 @@ function App() {
       available: availableCount,
       matched: matchedCount,
       alreadySynced: alreadySyncedCount,
-      unmatched: unmatchedCount
+      unmatched: unmatchedCount,
+      conflicts: conflictCount
     });
     setMetaAdsSyncStage('review');
     if (warning) {
@@ -3311,11 +3433,126 @@ function App() {
     });
     const hasUnmatchedAccounts = metaAdsMatches.some(match => !match.client);
     const hasUnmatchedClients = updatedClients.some(client => !client.metaAccountId);
-    setMetaAdsSyncStage(hasUnmatchedAccounts || hasUnmatchedClients ? 'merge' : 'complete');
+    const hasConflicts = metaAdsMatches.some(match => match.isConflict);
+    setMetaAdsSyncStage(hasConflicts ? 'conflicts' : (hasUnmatchedAccounts || hasUnmatchedClients ? 'merge' : 'complete'));
     showToast(
       'success',
       'Meta Ads sync confirmed',
       `Linked ${selectedMatches.length} Meta Ads accounts to client records.`
+    );
+  };
+
+  const metaAdsConflictOptions = metaAdsMatches
+    .filter(match => match.isConflict)
+    .flatMap(match => match.conflictCandidates.map(candidate => ({
+      id: `${match.account.id}-${candidate.client.id}`,
+      account: match.account,
+      client: candidate.client,
+      matchReasons: candidate.reasons,
+      matchScore: candidate.score,
+      conflictGroupId: match.account.id
+    })));
+  const normalizedMetaAdsConflictSearch = metaAdsConflictSearch.trim().toLowerCase();
+  const metaAdsConflictSearchMatches = (value) => value?.toLowerCase().includes(normalizedMetaAdsConflictSearch);
+  const filteredMetaAdsConflictOptions = metaAdsConflictOptions.filter(option => (
+    !normalizedMetaAdsConflictSearch
+    || metaAdsConflictSearchMatches(option.account?.name)
+    || metaAdsConflictSearchMatches(option.account?.billingEmail)
+    || metaAdsConflictSearchMatches(option.account?.website)
+    || metaAdsConflictSearchMatches(option.client?.businessName)
+    || metaAdsConflictSearchMatches(option.client?.contactName)
+    || metaAdsConflictSearchMatches(option.client?.email)
+  ));
+
+  const toggleMetaAdsConflictSelection = (id, groupId) => {
+    setMetaAdsConflictSelection(prev => {
+      const next = new Set(prev);
+      const groupOptions = metaAdsConflictOptions
+        .filter(option => option.conflictGroupId === groupId)
+        .map(option => option.id);
+      groupOptions.forEach(optionId => {
+        if (optionId !== id) {
+          next.delete(optionId);
+        }
+      });
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const confirmMetaAdsConflicts = () => {
+    const selectedOptions = metaAdsConflictOptions.filter(option => metaAdsConflictSelection.has(option.id));
+    if (selectedOptions.length === 0) {
+      setMetaAdsSyncStage('merge');
+      return;
+    }
+    const updatedClients = clients.map(client => {
+      const match = selectedOptions.find(selected => selected.client?.id === client.id);
+      if (!match) return client;
+      return mergeAdsAccountIntoClient(client, match.account, 'meta');
+    });
+    setClients(updatedClients);
+    if (selectedClient) {
+      const refreshedClient = updatedClients.find(client => client.id === selectedClient.id);
+      if (refreshedClient) {
+        setSelectedClient(refreshedClient);
+      }
+    }
+    setMetaByClient(prev => {
+      const next = { ...prev };
+      selectedOptions.forEach(match => {
+        if (!match.client) return;
+        next[match.client.id] = {
+          accountId: match.account.id,
+          status: 'success',
+          error: null,
+          logs: [],
+          source: 'meta-sync',
+          data: {
+            overview: match.account.overview,
+            metrics: match.account.metrics,
+            team: match.account.team,
+            changeHistory: match.account.changeHistory
+          }
+        };
+      });
+      return next;
+    });
+    const nextMatches = metaAdsMatches.map(match => {
+      const selectedOption = selectedOptions.find(option => option.account.id === match.account.id);
+      if (!selectedOption) return match;
+      return {
+        ...match,
+        client: selectedOption.client,
+        matchReasons: selectedOption.matchReasons,
+        matchScore: selectedOption.matchScore,
+        canSync: true,
+        isConflict: false,
+        conflictCandidates: []
+      };
+    });
+    setMetaAdsMatches(nextMatches);
+    setMetaAdsConflictSelection(new Set());
+    setMetaAdsConflictSearch('');
+    const hasUnmatchedAccounts = nextMatches.some(match => !match.client);
+    const hasUnmatchedClients = updatedClients.some(client => !client.metaAccountId);
+    const remainingConflicts = nextMatches.some(match => match.isConflict);
+    setMetaAdsSyncStats(prev => ({
+      ...prev,
+      available: nextMatches.filter(match => match.canSync).length,
+      matched: nextMatches.filter(match => match.client).length,
+      unmatched: nextMatches.filter(match => !match.client).length,
+      conflicts: nextMatches.filter(match => match.isConflict).length
+    }));
+    setMetaAdsSyncStage(remainingConflicts ? 'conflicts' : (hasUnmatchedAccounts || hasUnmatchedClients ? 'merge' : 'complete'));
+    showToast(
+      'success',
+      'Meta Ads conflicts resolved',
+      `Linked ${selectedOptions.length} conflicting account${selectedOptions.length === 1 ? '' : 's'}.`
     );
   };
 
@@ -3330,6 +3567,9 @@ function App() {
     }
     if (metaAdsReviewFilter === 'unmatched') {
       return !match.client;
+    }
+    if (metaAdsReviewFilter === 'conflicts') {
+      return match.isConflict;
     }
     return true;
   });
@@ -5228,11 +5468,14 @@ function App() {
             </div>
 
             <div className="stripe-stepper">
-              <span className={`stripe-step ${googleAdsSyncStage === 'loading' ? 'active' : googleAdsSyncStage === 'review' || googleAdsSyncStage === 'merge' || googleAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+              <span className={`stripe-step ${googleAdsSyncStage === 'loading' ? 'active' : googleAdsSyncStage === 'review' || googleAdsSyncStage === 'conflicts' || googleAdsSyncStage === 'merge' || googleAdsSyncStage === 'complete' ? 'complete' : ''}`}>
                 <Table size={14} /> Pull Google Ads Accounts
               </span>
-              <span className={`stripe-step ${googleAdsSyncStage === 'review' ? 'active' : googleAdsSyncStage === 'merge' || googleAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+              <span className={`stripe-step ${googleAdsSyncStage === 'review' ? 'active' : googleAdsSyncStage === 'conflicts' || googleAdsSyncStage === 'merge' || googleAdsSyncStage === 'complete' ? 'complete' : ''}`}>
                 <CheckCircle size={14} /> Match Review
+              </span>
+              <span className={`stripe-step ${googleAdsSyncStage === 'conflicts' ? 'active' : googleAdsSyncStage === 'merge' || googleAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+                <AlertTriangle size={14} /> Resolve Conflicts
               </span>
               <span className={`stripe-step ${googleAdsSyncStage === 'merge' ? 'active' : googleAdsSyncStage === 'complete' ? 'complete' : ''}`}>
                 <Users size={14} /> Link Accounts
@@ -5260,6 +5503,7 @@ function App() {
                       <span className="stripe-summary-pill">{googleAdsSyncStats.available} available to sync</span>
                       <span className="stripe-summary-pill">{googleAdsSyncStats.alreadySynced} already linked</span>
                       <span className="stripe-summary-pill">{googleAdsSyncStats.unmatched} unmatched</span>
+                      <span className="stripe-summary-pill">{googleAdsSyncStats.conflicts} conflicts</span>
                     </div>
                   </div>
                   <div>
@@ -5276,6 +5520,7 @@ function App() {
                         <th>Google Ads Account</th>
                         <th>Client Database</th>
                         <th>Matched by</th>
+                        <th>Score</th>
                         <th>Status</th>
                       </tr>
                     </thead>
@@ -5313,6 +5558,8 @@ function App() {
                                   <span className="stripe-customer-sub">{match.client.email}</span>
                                   <span className="stripe-customer-sub">{match.client.location}</span>
                                 </div>
+                              ) : match.isConflict ? (
+                                <span className="stripe-no-match">Conflict detected ({match.conflictCandidates.length} candidates)</span>
                               ) : (
                                 <span className="stripe-no-match">No client match found</span>
                               )}
@@ -5322,14 +5569,23 @@ function App() {
                                 match.matchReasons.map((reason) => (
                                   <span key={reason} className="stripe-match-pill">{reason}</span>
                                 ))
+                              ) : match.isConflict ? (
+                                <span className="stripe-no-match">Conflicting match signals</span>
                               ) : (
                                 <span className="stripe-no-match">Awaiting manual match</span>
                               )}
                             </td>
                             <td>
+                              <span className="stripe-verify">{match.matchScore || 0}</span>
+                            </td>
+                            <td>
                               {match.alreadySynced ? (
                                 <span className="stripe-verify">
                                   <CheckCircle size={14} /> Linked
+                                </span>
+                              ) : match.isConflict ? (
+                                <span className="stripe-no-match">
+                                  <AlertTriangle size={14} /> Conflict
                                 </span>
                               ) : match.client ? (
                                 <span className="stripe-verify">
@@ -5348,6 +5604,106 @@ function App() {
                 <div className="stripe-review-actions">
                   <button className="btn-ghost" onClick={closeGoogleAdsSync}>Close</button>
                   <button className="btn-primary" onClick={confirmGoogleAdsMatches} disabled={googleAdsMatchSelection.size === 0}>
+                    Link Selected <ArrowRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {googleAdsSyncStage === 'conflicts' && (
+              <div className="stripe-results">
+                <div className="stripe-results-header">
+                  <div>
+                    <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Resolve Google Ads conflicts</h3>
+                    <p className="stripe-results-meta">
+                      {googleAdsSyncStats.conflicts} conflicting account matches need review.
+                    </p>
+                  </div>
+                  <div>
+                    <button className="stripe-select-all" onClick={() => setGoogleAdsConflictSelection(new Set())}>
+                      Clear selections
+                    </button>
+                  </div>
+                </div>
+                <div className="stripe-merge-search" style={{ marginBottom: '1rem' }}>
+                  <input
+                    type="search"
+                    placeholder="Search conflicts"
+                    className="stripe-search-input"
+                    value={googleAdsConflictSearch}
+                    onChange={(event) => setGoogleAdsConflictSearch(event.target.value)}
+                  />
+                </div>
+                <div className="stripe-table-wrapper">
+                  <table className="stripe-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '60px' }}>Select</th>
+                        <th>Google Ads Account</th>
+                        <th>Client Database</th>
+                        <th>Matched by</th>
+                        <th>Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredGoogleAdsConflictOptions.length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="stripe-no-match">
+                            No conflicts match your search.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredGoogleAdsConflictOptions.map(option => {
+                          const isSelected = googleAdsConflictSelection.has(option.id);
+                          return (
+                            <tr key={option.id}>
+                              <td>
+                                <div
+                                  className={`card-select-checkbox ${isSelected ? 'checked' : ''}`}
+                                  onClick={() => toggleGoogleAdsConflictSelection(option.id, option.conflictGroupId)}
+                                  style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                                >
+                                  {isSelected && <Check size={12} />}
+                                </div>
+                              </td>
+                              <td>
+                                <div className="stripe-customer-card">
+                                  <span className="stripe-customer-title">{option.account.name}</span>
+                                  <span className="stripe-customer-sub">ID: {option.account.overview?.id}</span>
+                                  <span className="stripe-customer-sub">{option.account.billingEmail}</span>
+                                  <span className="stripe-customer-sub">{option.account.website}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="stripe-customer-card">
+                                  <span className="stripe-customer-title">{option.client.businessName}</span>
+                                  <span className="stripe-customer-sub">{option.client.contactName}</span>
+                                  <span className="stripe-customer-sub">{option.client.email}</span>
+                                  <span className="stripe-customer-sub">{option.client.location}</span>
+                                </div>
+                              </td>
+                              <td>
+                                {option.matchReasons.length ? (
+                                  option.matchReasons.map((reason) => (
+                                    <span key={reason} className="stripe-match-pill">{reason}</span>
+                                  ))
+                                ) : (
+                                  <span className="stripe-no-match">Needs review</span>
+                                )}
+                              </td>
+                              <td>
+                                <span className="stripe-verify">{option.matchScore || 0}</span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="stripe-review-actions">
+                  <button className="btn-ghost" onClick={() => setGoogleAdsSyncStage('review')}>Back</button>
+                  <button className="btn-primary" onClick={confirmGoogleAdsConflicts}>
                     Link Selected <ArrowRight size={16} />
                   </button>
                 </div>
@@ -5552,11 +5908,14 @@ function App() {
             </div>
 
             <div className="stripe-stepper">
-              <span className={`stripe-step ${metaAdsSyncStage === 'loading' ? 'active' : metaAdsSyncStage === 'review' || metaAdsSyncStage === 'merge' || metaAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+              <span className={`stripe-step ${metaAdsSyncStage === 'loading' ? 'active' : metaAdsSyncStage === 'review' || metaAdsSyncStage === 'conflicts' || metaAdsSyncStage === 'merge' || metaAdsSyncStage === 'complete' ? 'complete' : ''}`}>
                 <Table size={14} /> Pull Meta Ads Accounts
               </span>
-              <span className={`stripe-step ${metaAdsSyncStage === 'review' ? 'active' : metaAdsSyncStage === 'merge' || metaAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+              <span className={`stripe-step ${metaAdsSyncStage === 'review' ? 'active' : metaAdsSyncStage === 'conflicts' || metaAdsSyncStage === 'merge' || metaAdsSyncStage === 'complete' ? 'complete' : ''}`}>
                 <CheckCircle size={14} /> Match Review
+              </span>
+              <span className={`stripe-step ${metaAdsSyncStage === 'conflicts' ? 'active' : metaAdsSyncStage === 'merge' || metaAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+                <AlertTriangle size={14} /> Resolve Conflicts
               </span>
               <span className={`stripe-step ${metaAdsSyncStage === 'merge' ? 'active' : metaAdsSyncStage === 'complete' ? 'complete' : ''}`}>
                 <Users size={14} /> Link Accounts
@@ -5608,6 +5967,15 @@ function App() {
                       >
                         {metaAdsSyncStats.unmatched} unmatched
                       </span>
+                      <span
+                        className={`stripe-summary-pill ${metaAdsReviewFilter === 'conflicts' ? 'filter-active' : ''}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleMetaAdsReviewFilter('conflicts')}
+                        onKeyDown={(event) => handleMetaAdsReviewFilterKeyDown(event, 'conflicts')}
+                      >
+                        {metaAdsSyncStats.conflicts} conflicts
+                      </span>
                     </div>
                   </div>
                   <div>
@@ -5624,6 +5992,7 @@ function App() {
                         <th>Meta Ads Account</th>
                         <th>Client Database</th>
                         <th>Matched by</th>
+                        <th>Score</th>
                         <th>Status</th>
                       </tr>
                     </thead>
@@ -5661,6 +6030,8 @@ function App() {
                                   <span className="stripe-customer-sub">{match.client.email}</span>
                                   <span className="stripe-customer-sub">{match.client.location}</span>
                                 </div>
+                              ) : match.isConflict ? (
+                                <span className="stripe-no-match">Conflict detected ({match.conflictCandidates.length} candidates)</span>
                               ) : (
                                 <span className="stripe-no-match">No client match found</span>
                               )}
@@ -5670,14 +6041,23 @@ function App() {
                                 match.matchReasons.map((reason) => (
                                   <span key={reason} className="stripe-match-pill">{reason}</span>
                                 ))
+                              ) : match.isConflict ? (
+                                <span className="stripe-no-match">Conflicting match signals</span>
                               ) : (
                                 <span className="stripe-no-match">Awaiting manual match</span>
                               )}
                             </td>
                             <td>
+                              <span className="stripe-verify">{match.matchScore || 0}</span>
+                            </td>
+                            <td>
                               {match.alreadySynced ? (
                                 <span className="stripe-verify">
                                   <CheckCircle size={14} /> Linked
+                                </span>
+                              ) : match.isConflict ? (
+                                <span className="stripe-no-match">
+                                  <AlertTriangle size={14} /> Conflict
                                 </span>
                               ) : match.client ? (
                                 <span className="stripe-verify">
@@ -5696,6 +6076,106 @@ function App() {
                 <div className="stripe-review-actions">
                   <button className="btn-ghost" onClick={closeMetaAdsSync}>Close</button>
                   <button className="btn-primary" onClick={confirmMetaAdsMatches} disabled={metaAdsMatchSelection.size === 0}>
+                    Link Selected <ArrowRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {metaAdsSyncStage === 'conflicts' && (
+              <div className="stripe-results">
+                <div className="stripe-results-header">
+                  <div>
+                    <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Resolve Meta Ads conflicts</h3>
+                    <p className="stripe-results-meta">
+                      {metaAdsSyncStats.conflicts} conflicting account matches need review.
+                    </p>
+                  </div>
+                  <div>
+                    <button className="stripe-select-all" onClick={() => setMetaAdsConflictSelection(new Set())}>
+                      Clear selections
+                    </button>
+                  </div>
+                </div>
+                <div className="stripe-merge-search" style={{ marginBottom: '1rem' }}>
+                  <input
+                    type="search"
+                    placeholder="Search conflicts"
+                    className="stripe-search-input"
+                    value={metaAdsConflictSearch}
+                    onChange={(event) => setMetaAdsConflictSearch(event.target.value)}
+                  />
+                </div>
+                <div className="stripe-table-wrapper">
+                  <table className="stripe-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '60px' }}>Select</th>
+                        <th>Meta Ads Account</th>
+                        <th>Client Database</th>
+                        <th>Matched by</th>
+                        <th>Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredMetaAdsConflictOptions.length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="stripe-no-match">
+                            No conflicts match your search.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredMetaAdsConflictOptions.map(option => {
+                          const isSelected = metaAdsConflictSelection.has(option.id);
+                          return (
+                            <tr key={option.id}>
+                              <td>
+                                <div
+                                  className={`card-select-checkbox ${isSelected ? 'checked' : ''}`}
+                                  onClick={() => toggleMetaAdsConflictSelection(option.id, option.conflictGroupId)}
+                                  style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                                >
+                                  {isSelected && <Check size={12} />}
+                                </div>
+                              </td>
+                              <td>
+                                <div className="stripe-customer-card">
+                                  <span className="stripe-customer-title">{option.account.name}</span>
+                                  <span className="stripe-customer-sub">ID: {option.account.overview?.id}</span>
+                                  <span className="stripe-customer-sub">{option.account.billingEmail}</span>
+                                  <span className="stripe-customer-sub">{option.account.website}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="stripe-customer-card">
+                                  <span className="stripe-customer-title">{option.client.businessName}</span>
+                                  <span className="stripe-customer-sub">{option.client.contactName}</span>
+                                  <span className="stripe-customer-sub">{option.client.email}</span>
+                                  <span className="stripe-customer-sub">{option.client.location}</span>
+                                </div>
+                              </td>
+                              <td>
+                                {option.matchReasons.length ? (
+                                  option.matchReasons.map((reason) => (
+                                    <span key={reason} className="stripe-match-pill">{reason}</span>
+                                  ))
+                                ) : (
+                                  <span className="stripe-no-match">Needs review</span>
+                                )}
+                              </td>
+                              <td>
+                                <span className="stripe-verify">{option.matchScore || 0}</span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="stripe-review-actions">
+                  <button className="btn-ghost" onClick={() => setMetaAdsSyncStage('review')}>Back</button>
+                  <button className="btn-primary" onClick={confirmMetaAdsConflicts}>
                     Link Selected <ArrowRight size={16} />
                   </button>
                 </div>
