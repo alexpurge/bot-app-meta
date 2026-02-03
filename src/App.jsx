@@ -1,5 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { 
+  Activity,
+  BadgeDollarSign,
+  Database,
+  History,
+  MousePointerClick,
+  Percent,
   Search, 
   Plus, 
   Trash2, 
@@ -38,6 +44,9 @@ import {
   Pause,
   XSquare,
   RefreshCw,
+  ShoppingBag,
+  Star,
+  TrendingUp,
   ChevronDown,
   ArrowRight,
   Eye
@@ -438,6 +447,100 @@ const STYLES = `
   .meta-error { margin-top: 1rem; padding: 1rem; border-radius: 0.85rem; background: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.3); color: #fecaca; font-size: 0.85rem; }
   .meta-log { margin-top: 0.75rem; padding: 0.75rem; border-radius: 0.75rem; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.75rem; color: var(--text-secondary); white-space: pre-wrap; }
   .meta-range-pill { margin-top: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.35rem 0.75rem; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #93c5fd; font-weight: 700; }
+  .meta-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+  .meta-lookup { border-radius: 1rem; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 23, 42, 0.6); padding: 1.25rem; box-shadow: 0 18px 35px rgba(0, 0, 0, 0.35); flex: 1; min-width: 280px; }
+  .meta-lookup.compact { padding: 0.85rem 1rem; }
+  .meta-lookup-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .meta-lookup-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+  .meta-lookup-helper { color: var(--text-secondary); font-size: 0.85rem; margin: 0.35rem 0 0; }
+  .meta-lookup-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.75rem; align-items: end; }
+  .meta-tab-group { margin-top: 0.5rem; margin-bottom: 1.5rem; }
+
+  .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; width: 100%; margin-bottom: 2rem; }
+  .glass-panel { background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1rem; box-shadow: 0 18px 35px rgba(0, 0, 0, 0.35); }
+  .text-small { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); font-weight: 700; }
+
+  .tab-group { display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; width: 100%; }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.85rem 1.35rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+  .tab-btn:hover { color: #fff; border-bottom-color: #3b82f6; background: rgba(59, 130, 246, 0.08); }
+  .tab-btn.active { color: #fff; border-bottom-color: var(--accent-primary); background: rgba(255, 93, 0, 0.05); }
+
+  .date-picker { display: flex; gap: 0.5rem; flex-wrap: wrap; background: rgba(0, 0, 0, 0.3); padding: 0.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); }
+  .date-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .date-btn.active { background: var(--accent-primary); color: white; }
+
+  .data-table-wrapper { width: 100%; overflow-x: auto; }
+  .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+  .data-table th {
+    background: #000;
+    padding: 1rem 1.5rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+  }
+  .data-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    vertical-align: top;
+  }
+  .data-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    text-transform: uppercase;
+  }
+  .badge-active { background: rgba(22, 163, 74, 0.1); color: #4ade80; border-color: rgba(22, 163, 74, 0.2); }
+  .badge-paused { background: rgba(234, 179, 8, 0.1); color: #facc15; border-color: rgba(234, 179, 8, 0.2); }
+  .badge-closed { background: rgba(255, 93, 0, 0.1); color: #ff8c42; border-color: rgba(255, 93, 0, 0.2); }
+  .badge-main {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+  }
 
   .google-panel { border-radius: 1rem; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 23, 42, 0.6); padding: 1.5rem; box-shadow: 0 18px 35px rgba(0, 0, 0, 0.35); }
   .google-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
@@ -940,6 +1043,7 @@ function App() {
   const [clientActivityTab, setClientActivityTab] = useState('contact');
   const [clientMetaTab, setClientMetaTab] = useState('overview');
   const [metaAccountInput, setMetaAccountInput] = useState('');
+  const [metaDateRange, setMetaDateRange] = useState({ label: '30 Days', days: 30 });
   const [metaByClient, setMetaByClient] = useState({});
   const [clientGoogleTab, setClientGoogleTab] = useState('overview');
   const [googleAccountInput, setGoogleAccountInput] = useState('');
@@ -998,6 +1102,13 @@ function App() {
   const showToast = (type, title, message) => {
     setToast({ type, title, message });
   };
+
+  const metaDateOptions = useMemo(() => ([
+    { label: 'Today', days: 1 },
+    { label: '7 Days', days: 7 },
+    { label: '30 Days', days: 30 },
+    { label: 'All Time', days: 'all' }
+  ]), []);
 
   const isValueMissing = (value) => {
     if (value === null || value === undefined) return true;
@@ -3067,6 +3178,44 @@ function App() {
     : [];
   const selectedMetaEntry = selectedClient ? metaByClient[selectedClient.id] : null;
   const selectedGoogleEntry = selectedClient ? googleByClient[selectedClient.id] : null;
+  const metaTeamRoster = useMemo(() => {
+    const changeHistory = selectedMetaEntry?.data?.changeHistory || [];
+    const teamRoster = Array.isArray(selectedMetaEntry?.data?.team) ? selectedMetaEntry.data.team : [];
+    const teamByName = new Map(teamRoster.map(member => [normalizeValue(member.name), member]));
+    const rosterMap = new Map();
+
+    changeHistory.forEach((log) => {
+      const actorName = log.actor_name || 'Unknown';
+      const actorKey = log.actor_id || normalizeValue(actorName) || 'unknown';
+      const existing = rosterMap.get(actorKey);
+      const teamMatch = teamByName.get(normalizeValue(actorName));
+      if (existing) {
+        existing.activityCount += 1;
+      } else {
+        rosterMap.set(actorKey, {
+          id: log.actor_id || actorKey,
+          name: actorName,
+          role: teamMatch?.role || 'Meta access',
+          email: teamMatch?.email || '',
+          accessLabels: teamMatch?.accessLabels || [],
+          activityCount: 1
+        });
+      }
+    });
+
+    if (rosterMap.size === 0 && teamRoster.length > 0) {
+      return teamRoster.map((member, index) => ({
+        id: member.id || `${normalizeValue(member.name)}-${index}`,
+        name: member.name,
+        role: member.role || 'Meta access',
+        email: member.email || '',
+        accessLabels: member.accessLabels || [],
+        activityCount: 0
+      }));
+    }
+
+    return Array.from(rosterMap.values()).sort((a, b) => b.activityCount - a.activityCount);
+  }, [selectedMetaEntry, normalizeValue]);
   const isLoggedIn = isAircallLoggedIn && isMetaLoggedIn;
 
   return (
@@ -4604,78 +4753,106 @@ function App() {
 
                   {clientDetailTab === 'meta' && (
                     <div>
-                      <div className="meta-panel">
-                        <div className="meta-panel-header">
-                          <div>
-                            <h3 className="meta-panel-title">Meta Risk Snapshot</h3>
-                            <div className="meta-panel-helper">
-                              Load the Meta Ads account to view a streamlined risk overview, team roster, change history, and metrics.
+                      <div className="meta-header">
+                        <div className={`meta-lookup ${selectedMetaEntry?.data ? 'compact' : ''}`}>
+                          <div className="meta-lookup-title-row">
+                            <div>
+                              <h3 className="meta-lookup-title">Meta Ads Account ID</h3>
+                              {!selectedMetaEntry?.data && (
+                                <p className="meta-lookup-helper">
+                                  Load the Meta Ads account to review metrics, team activity, and change history.
+                                </p>
+                              )}
                             </div>
+                            {selectedMetaEntry?.source && (
+                              <span className="meta-source-pill">Source: {selectedMetaEntry.source}</span>
+                            )}
                           </div>
-                          {selectedMetaEntry?.source && (
-                            <span className="meta-source-pill">Source: {selectedMetaEntry.source}</span>
+
+                          <form onSubmit={handleMetaLookup}>
+                            <div className="meta-lookup-form">
+                              <div>
+                                <input
+                                  id="metaAccountIdInput"
+                                  className="form-input meta-input"
+                                  value={metaAccountInput}
+                                  onChange={(event) => setMetaAccountInput(event.target.value)}
+                                  placeholder="Enter Meta Ads account ID"
+                                />
+                              </div>
+                              <button className="btn-primary meta-submit" type="submit" disabled={selectedMetaEntry?.status === 'loading'}>
+                                {selectedMetaEntry?.status === 'loading' ? 'Loading...' : 'Load Meta'}
+                              </button>
+                            </div>
+                          </form>
+
+                          {selectedMetaEntry?.status === 'error' && selectedMetaEntry?.error && (
+                            <div className="meta-error">
+                              <strong>Error:</strong> {selectedMetaEntry.error}
+                            </div>
+                          )}
+
+                          {selectedMetaEntry?.logs?.length > 0 && (
+                            <div className="meta-log">
+                              {selectedMetaEntry.logs.join('\n')}
+                            </div>
                           )}
                         </div>
-                        <div className="meta-range-pill">Date range: Last 30 days</div>
 
-                        <form onSubmit={handleMetaLookup}>
-                          <div className="meta-form">
-                            <div>
-                              <label className="form-label" htmlFor="metaAccountIdInput">Meta Ads Account ID</label>
-                              <input
-                                id="metaAccountIdInput"
-                                className="form-input meta-input"
-                                value={metaAccountInput}
-                                onChange={(event) => setMetaAccountInput(event.target.value)}
-                                placeholder="Enter Meta Ads account ID"
-                              />
-                            </div>
-                            <button className="btn-primary meta-submit" type="submit" disabled={selectedMetaEntry?.status === 'loading'}>
-                              {selectedMetaEntry?.status === 'loading' ? 'Loading...' : 'Load Meta'}
+                        <div>
+                          <div className="date-picker">
+                            {metaDateOptions.map(option => (
+                              <button
+                                key={option.label}
+                                type="button"
+                                className={`date-btn ${metaDateRange.label === option.label ? 'active' : ''}`}
+                                onClick={() => setMetaDateRange(option)}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              className={`date-btn ${metaDateRange.days === 'custom' ? 'active' : ''}`}
+                              onClick={() => setMetaDateRange({ label: 'Custom', days: 'custom' })}
+                            >
+                              Custom
                             </button>
                           </div>
-                        </form>
-
-                        {selectedMetaEntry?.status === 'error' && selectedMetaEntry?.error && (
-                          <div className="meta-error">
-                            <strong>Error:</strong> {selectedMetaEntry.error}
-                          </div>
-                        )}
-
-                        {selectedMetaEntry?.logs?.length > 0 && (
-                          <div className="meta-log">
-                            {selectedMetaEntry.logs.join('\n')}
-                          </div>
-                        )}
+                        </div>
                       </div>
 
-                      <div className="meta-subtabs">
+                      <div className="tab-group meta-tab-group">
                         <button
-                          className={`meta-subtab ${clientMetaTab === 'overview' ? 'active' : ''}`}
+                          className={`tab-btn ${clientMetaTab === 'overview' ? 'active' : ''}`}
                           onClick={() => setClientMetaTab('overview')}
                           type="button"
                         >
+                          <TrendingUp size={16} />
                           Overview
                         </button>
                         <button
-                          className={`meta-subtab ${clientMetaTab === 'team' ? 'active' : ''}`}
+                          className={`tab-btn ${clientMetaTab === 'team' ? 'active' : ''}`}
                           onClick={() => setClientMetaTab('team')}
                           type="button"
                         >
+                          <Users size={16} />
                           Team
                         </button>
                         <button
-                          className={`meta-subtab ${clientMetaTab === 'history' ? 'active' : ''}`}
+                          className={`tab-btn ${clientMetaTab === 'history' ? 'active' : ''}`}
                           onClick={() => setClientMetaTab('history')}
                           type="button"
                         >
+                          <History size={16} />
                           Change History
                         </button>
                         <button
-                          className={`meta-subtab ${clientMetaTab === 'metrics' ? 'active' : ''}`}
+                          className={`tab-btn ${clientMetaTab === 'metrics' ? 'active' : ''}`}
                           onClick={() => setClientMetaTab('metrics')}
                           type="button"
                         >
+                          <Activity size={16} />
                           Metrics
                         </button>
                       </div>
@@ -4687,96 +4864,247 @@ function App() {
                       )}
 
                       {selectedMetaEntry?.data && clientMetaTab === 'overview' && (
-                        <div className="meta-grid">
-                          <div className="meta-card">
-                            <div className="meta-card-label">Account Name</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.name || 'Unavailable'}</div>
+                        <div className="grid-stats">
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">Spend</span>
+                              <TrendingUp color="#4ade80" />
+                            </div>
+                            <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2.2rem)', fontWeight: 900, fontFamily: 'monospace' }}>
+                              {formatCurrency(Number(selectedMetaEntry.data.metrics?.spend), selectedMetaEntry.data.overview?.currency)}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">Account Status</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.account_status ?? 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">Impressions</span>
+                              <Activity color="#60a5fa" />
+                            </div>
+                            <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2.2rem)', fontWeight: 900, fontFamily: 'monospace' }}>
+                              {Number(selectedMetaEntry.data.metrics?.impressions || 0).toLocaleString()}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">Currency</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.currency || 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">Clicks</span>
+                              <MousePointerClick color="#a78bfa" />
+                            </div>
+                            <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2.2rem)', fontWeight: 900, fontFamily: 'monospace' }}>
+                              {Number(selectedMetaEntry.data.metrics?.clicks || 0).toLocaleString()}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">Amount Spent</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.amount_spent || 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">CTR</span>
+                              <Percent color="#a78bfa" />
+                            </div>
+                            <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2.2rem)', fontWeight: 900, fontFamily: 'monospace' }}>
+                              {selectedMetaEntry.data.metrics?.ctr ? `${parseFloat(selectedMetaEntry.data.metrics.ctr).toFixed(2)}%` : '—'}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">Balance</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.balance || 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">CPC</span>
+                              <BadgeDollarSign color="#facc15" />
+                            </div>
+                            <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2.2rem)', fontWeight: 900, fontFamily: 'monospace' }}>
+                              {formatCurrency(Number(selectedMetaEntry.data.metrics?.cpc), selectedMetaEntry.data.overview?.currency)}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">Timezone</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.timezone_name || 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">CPM</span>
+                              <Database color="#f97316" />
+                            </div>
+                            <div style={{ fontSize: 'clamp(1.5rem, 2vw, 2.2rem)', fontWeight: 900, fontFamily: 'monospace' }}>
+                              {formatCurrency(Number(selectedMetaEntry.data.metrics?.cpm), selectedMetaEntry.data.overview?.currency)}
+                            </div>
                           </div>
                         </div>
                       )}
 
                       {selectedMetaEntry?.data && clientMetaTab === 'team' && (
-                        <div className="meta-list">
-                          {(selectedMetaEntry.data.team || []).length > 0 ? (
-                            selectedMetaEntry.data.team.map(member => (
-                              <div key={member.id || member.name} className="meta-list-item">
-                                <div className="meta-list-title">{member.name}</div>
-                                <div className="meta-list-meta">
-                                  <span>{member.role || 'Meta access'}</span>
-                                  <span>{(member.accessLabels || []).join(' · ')}</span>
+                        <div className="grid-stats">
+                          {metaTeamRoster.length > 0 ? (
+                            metaTeamRoster.map((member, index) => {
+                              const accessLabels = member.accessLabels?.length ? member.accessLabels : ['Change History'];
+                              const isTop = index === 0 && metaTeamRoster.length > 1;
+                              return (
+                                <div
+                                  key={member.id || member.name}
+                                  className="glass-panel"
+                                  style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}
+                                >
+                                  <div style={{ width: '56px', height: '56px', background: '#1f2937', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 700, flexShrink: 0, color: '#f97316' }}>
+                                    {member.name?.[0] || '?'}
+                                  </div>
+                                  <div style={{ overflow: 'hidden' }}>
+                                    <h4 style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
+                                      {member.name}
+                                      {isTop && (
+                                        <span className="badge-main">
+                                          <Star size={10} fill="currentColor" /> Top
+                                        </span>
+                                      )}
+                                    </h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.35rem' }}>
+                                      <p className="text-small" style={{ color: '#f97316' }}>{member.role}</p>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                                        {accessLabels.map(label => (
+                                          <span key={`${member.id}-${label}`} className="meta-chip">{label}</span>
+                                        ))}
+                                      </div>
+                                      {member.email && (
+                                        <p className="text-small" style={{ fontSize: '0.65rem', textTransform: 'none', opacity: 0.7 }}>
+                                          {member.email}
+                                        </p>
+                                      )}
+                                      <p className="text-small" style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+                                        Activity Count: <span style={{ color: '#fff' }}>{member.activityCount}</span>
+                                      </p>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            ))
+                              );
+                            })
                           ) : (
-                            <div className="service-empty">No team members were found for this account.</div>
+                            <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
+                              <p className="text-small" style={{ textTransform: 'none' }}>No team members were found for this account.</p>
+                            </div>
                           )}
                         </div>
                       )}
 
                       {selectedMetaEntry?.data && clientMetaTab === 'history' && (
-                        <div className="meta-list">
-                          {(selectedMetaEntry.data.changeHistory || []).length > 0 ? (
-                            selectedMetaEntry.data.changeHistory.slice(0, 12).map((log, index) => (
-                              <div key={`${log.event_time || log.event_type}-${index}`} className="meta-list-item">
-                                <div className="meta-list-title">{log.translated_event_type || log.event_type || 'Change'}</div>
-                                <div className="meta-list-meta">
-                                  <span>{log.object_name || log.object_type || 'Meta asset'}</span>
-                                  <span>Actor: {log.actor_name || 'Unknown'}</span>
-                                  <span>{formatDateTime(log.event_time)}</span>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="service-empty">No change history was returned for this account.</div>
-                          )}
+                        <div className="glass-panel" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between' }}>
+                            <h3>Change History Log</h3>
+                            {selectedMetaEntry?.status === 'loading' && <RefreshCw className="animate-spin" size={16} />}
+                          </div>
+                          <div className="data-table-wrapper">
+                            <table className="data-table">
+                              <thead>
+                                <tr>
+                                  <th style={{ width: '180px' }}>Time</th>
+                                  <th style={{ width: '220px' }}>User</th>
+                                  <th style={{ width: '160px' }}>Action</th>
+                                  <th>Entity</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(selectedMetaEntry.data.changeHistory || []).length > 0 ? (
+                                  selectedMetaEntry.data.changeHistory.map((log, index) => (
+                                    <tr key={`${log.event_time || log.event_type}-${index}`}>
+                                      <td style={{ whiteSpace: 'nowrap' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                          <span style={{ fontWeight: 600, color: '#e2e8f0' }}>
+                                            {log.event_time ? new Date(log.event_time).toLocaleDateString() : 'Unknown date'}
+                                          </span>
+                                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                                            {log.event_time ? new Date(log.event_time).toLocaleTimeString() : '—'}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td>
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                          <div className="card-select-checkbox" style={{ width: '32px', height: '32px', borderRadius: '50%', fontSize: '0.75rem' }}>
+                                            {log.actor_name ? log.actor_name[0] : '?'}
+                                          </div>
+                                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontWeight: 600, color: '#fff' }}>{log.actor_name || 'System'}</span>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td>
+                                        <span
+                                          className={`badge ${
+                                            log.event_type?.toLowerCase().includes('create') ? 'badge-active' :
+                                            log.event_type?.toLowerCase().includes('delete') ? 'badge-closed' :
+                                            'badge-paused'
+                                          }`}
+                                        >
+                                          {log.translated_event_type || log.event_type || 'Change'}
+                                        </span>
+                                      </td>
+                                      <td>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                          <span style={{ fontWeight: 600, color: '#e2e8f0' }}>
+                                            {log.object_name || log.object_type || 'Meta asset'}
+                                          </span>
+                                          {log.object_id && (
+                                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>ID: {log.object_id}</span>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan="4" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                                      No changes found for this period.
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       )}
 
                       {selectedMetaEntry?.data && clientMetaTab === 'metrics' && (
-                        <div className="meta-grid">
-                          <div className="meta-card">
-                            <div className="meta-card-label">Spend (last 30d)</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.spend || 'Unavailable'}</div>
+                        <div className="grid-stats">
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">Account Name</span>
+                              <Users color="#f97316" />
+                            </div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                              {selectedMetaEntry.data.overview?.name || 'Unavailable'}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">Impressions</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.impressions || 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">Status</span>
+                              <Activity color="#60a5fa" />
+                            </div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                              {selectedMetaEntry.data.overview?.account_status ?? 'Unavailable'}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">Clicks</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.clicks || 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">Currency</span>
+                              <BadgeDollarSign color="#facc15" />
+                            </div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                              {selectedMetaEntry.data.overview?.currency || 'Unavailable'}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">CTR</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.ctr || 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">Amount Spent</span>
+                              <TrendingUp color="#4ade80" />
+                            </div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                              {selectedMetaEntry.data.overview?.amount_spent || 'Unavailable'}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">CPC</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.cpc || 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">Balance</span>
+                              <ShoppingBag color="#a78bfa" />
+                            </div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                              {selectedMetaEntry.data.overview?.balance || 'Unavailable'}
+                            </div>
                           </div>
-                          <div className="meta-card">
-                            <div className="meta-card-label">CPM</div>
-                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.cpm || 'Unavailable'}</div>
+                          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                              <span className="text-small">Timezone</span>
+                              <Database color="#f97316" />
+                            </div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                              {selectedMetaEntry.data.overview?.timezone_name || 'Unavailable'}
+                            </div>
                           </div>
                         </div>
                       )}
