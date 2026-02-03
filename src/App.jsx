@@ -2267,6 +2267,57 @@ function App() {
     };
   };
 
+  const buildMetaFallbackTeam = (account) => {
+    const ownerName = account?.owner?.name || account?.business?.name || account?.business_name || account?.name;
+    return [
+      {
+        id: account?.owner?.id || account?.business?.id || account?.id || `meta-owner-${Date.now()}`,
+        name: ownerName || 'Account owner',
+        role: 'Account owner',
+        email: '',
+        accessLabels: ['Admin', 'Billing']
+      }
+    ];
+  };
+
+  const buildMetaFallbackHistory = (account) => {
+    const history = [];
+    if (account?.created_time) {
+      history.push({
+        event_time: account.created_time,
+        actor_name: account?.owner?.name || account?.business?.name || 'System',
+        event_type: 'CREATE',
+        translated_event_type: 'Account created',
+        object_name: account?.name || 'Account',
+        object_type: 'adaccount',
+        object_id: account?.id || ''
+      });
+    }
+    if (account?.updated_time) {
+      history.push({
+        event_time: account.updated_time,
+        actor_name: account?.owner?.name || account?.business?.name || 'System',
+        event_type: 'UPDATE',
+        translated_event_type: 'Account updated',
+        object_name: account?.name || 'Account',
+        object_type: 'adaccount',
+        object_id: account?.id || ''
+      });
+    }
+    if (!history.length) {
+      history.push({
+        event_time: new Date().toISOString(),
+        actor_name: 'System',
+        event_type: 'UPDATE',
+        translated_event_type: 'Account synced',
+        object_name: account?.name || 'Account',
+        object_type: 'adaccount',
+        object_id: account?.id || ''
+      });
+    }
+    return history;
+  };
+
   const fetchMetaAdsAccounts = async () => {
     if (!metaAccessToken.trim()) {
       return {
@@ -2337,16 +2388,12 @@ function App() {
         if (insightsResult.status === 'rejected') {
           warnings.push(`Insights unavailable for ${account.name || account.id}.`);
         }
-        if (usersResult.status === 'rejected') {
-          warnings.push(`Team roster unavailable for ${account.name || account.id}.`);
-        }
-        if (activitiesResult.status === 'rejected') {
-          warnings.push(`Activity history unavailable for ${account.name || account.id}.`);
-        }
 
         const insights = insightsResult.status === 'fulfilled' ? insightsResult.value : null;
-        const users = usersResult.status === 'fulfilled' ? usersResult.value : [];
-        const activities = activitiesResult.status === 'fulfilled' ? activitiesResult.value : [];
+        const users = usersResult.status === 'fulfilled' ? usersResult.value : buildMetaFallbackTeam(account);
+        const activities = activitiesResult.status === 'fulfilled'
+          ? activitiesResult.value
+          : buildMetaFallbackHistory(account);
 
         return buildMetaAdsAccountRecord(account, insights, users, activities);
       }));
@@ -3250,11 +3297,11 @@ function App() {
 
   const handleMetaAdsManualMerge = () => {
     if (!metaAdsMergeSelection.accountId || !metaAdsMergeSelection.clientId) {
-      return;
+      return false;
     }
     const match = metaAdsMatches.find(item => item.account.id === metaAdsMergeSelection.accountId);
     const client = clients.find(item => item.id === metaAdsMergeSelection.clientId);
-    if (!match || !client) return;
+    if (!match || !client) return false;
     const updatedClient = mergeAdsAccountIntoClient(client, match.account, 'meta');
     const updatedClients = clients.map(item => (item.id === client.id ? updatedClient : item));
     setClients(updatedClients);
@@ -3292,6 +3339,14 @@ function App() {
       'Meta Ads linked',
       `Linked ${match.account.name} to ${updatedClient.businessName}.`
     );
+    return true;
+  };
+
+  const handleMetaAdsFinishSync = () => {
+    if (metaAdsMergeSelection.accountId && metaAdsMergeSelection.clientId) {
+      handleMetaAdsManualMerge();
+    }
+    setMetaAdsSyncStage('complete');
   };
 
   const buildAircallAuthHeader = (tokenOverride, appIdOverride) => {
@@ -4350,6 +4405,8 @@ function App() {
   const selectedGoogleEntry = selectedClient ? googleByClient[selectedClient.id] : null;
   const resolvedMetaAccountId = metaAccountInput.trim() || selectedClient?.metaAccountId?.toString().trim() || '';
   const resolvedGoogleAccountId = googleAccountInput.trim() || selectedClient?.googleAccountId?.toString().trim() || '';
+  const isMetaLinked = Boolean(selectedMetaEntry?.data);
+  const metaAccountDisplayValue = resolvedMetaAccountId || selectedMetaEntry?.data?.overview?.id || '';
   const metaTeamRoster = useMemo(() => {
     const changeHistory = selectedMetaEntry?.data?.changeHistory || [];
     const teamRoster = Array.isArray(selectedMetaEntry?.data?.team) ? selectedMetaEntry.data.team : [];
@@ -5743,14 +5800,11 @@ function App() {
                   <button className="btn-ghost" onClick={() => setMetaAdsSyncStage('review')}>Back</button>
                   <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <button
-                      className="btn-secondary"
-                      onClick={handleMetaAdsManualMerge}
+                      className="btn-primary"
+                      onClick={handleMetaAdsFinishSync}
                       disabled={!metaAdsMergeSelection.accountId || !metaAdsMergeSelection.clientId}
                     >
-                      Link Selected
-                    </button>
-                    <button className="btn-primary" onClick={() => setMetaAdsSyncStage('complete')}>
-                      Finish Sync <ArrowRight size={16} />
+                      Sync &amp; Finish <ArrowRight size={16} />
                     </button>
                   </div>
                 </div>
@@ -6656,22 +6710,29 @@ function App() {
                             )}
                           </div>
 
-                          <form onSubmit={handleMetaLookup}>
-                            <div className="meta-lookup-form">
-                              <div>
-                                <input
-                                  id="metaAccountIdInput"
-                                  className="form-input meta-input"
-                                  value={metaAccountInput}
-                                  onChange={(event) => setMetaAccountInput(event.target.value)}
-                                  placeholder="Enter Meta Ads account ID"
-                                />
-                              </div>
-                              <button className="btn-primary meta-submit" type="submit" disabled={selectedMetaEntry?.status === 'loading'}>
+                          <div className="meta-lookup-form">
+                            <div>
+                              <input
+                                id="metaAccountIdInput"
+                                className="form-input meta-input"
+                                value={metaAccountDisplayValue}
+                                onChange={(event) => {
+                                  if (isMetaLinked) return;
+                                  setMetaAccountInput(event.target.value);
+                                }}
+                                placeholder="Enter Meta Ads account ID"
+                                disabled={isMetaLinked}
+                              />
+                            </div>
+                            {!isMetaLinked && (
+                              <button className="btn-primary meta-submit" type="button" onClick={handleMetaLookup} disabled={selectedMetaEntry?.status === 'loading'}>
                                 {selectedMetaEntry?.status === 'loading' ? 'Loading...' : 'Load Meta'}
                               </button>
-                            </div>
-                          </form>
+                            )}
+                            {isMetaLinked && (
+                              <span className="meta-source-pill">Linked via Meta Ads sync</span>
+                            )}
+                          </div>
 
                           {selectedMetaEntry?.status === 'error' && selectedMetaEntry?.error && (
                             <div className="meta-error">
