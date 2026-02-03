@@ -1035,6 +1035,7 @@ function App() {
   const [stripeSyncStage, setStripeSyncStage] = useState('review');
   const [stripeMatches, setStripeMatches] = useState([]);
   const [stripeMatchSelection, setStripeMatchSelection] = useState(new Set());
+  const [stripeReviewFilter, setStripeReviewFilter] = useState('all');
   const [stripeMergeSelection, setStripeMergeSelection] = useState({
     stripeCustomerId: '',
     clientId: ''
@@ -2417,6 +2418,17 @@ function App() {
     handleGoogleLookup(null, accountId);
   };
 
+  const handleStripeReviewFilter = (filter) => {
+    setStripeReviewFilter((current) => (current === filter ? 'all' : filter));
+  };
+
+  const handleStripeReviewFilterKeyDown = (event, filter) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleStripeReviewFilter(filter);
+    }
+  };
+
   const openStripeSync = () => {
     if (!stripeApiKey.trim()) {
       showToast('error', 'Stripe key required', 'Add your Stripe API key on the login screen to sync Stripe data.');
@@ -2433,6 +2445,7 @@ function App() {
     });
     setStripeCustomerMergeSearch('');
     setStripeClientMergeSearch('');
+    setStripeReviewFilter('all');
     setStripeSyncStage('review');
     setIsStripeSyncOpen(true);
   };
@@ -2440,6 +2453,7 @@ function App() {
   const closeStripeSync = () => {
     setIsStripeSyncOpen(false);
     setStripeSyncStage('review');
+    setStripeReviewFilter('all');
   };
 
   const prepareStripeSync = async (apiKey) => {
@@ -2456,6 +2470,7 @@ function App() {
     const unmatchedCount = matches.filter(match => !match.client).length;
     setStripeMatches(matches);
     setStripeMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
+    setStripeReviewFilter('all');
     setStripeSyncStats({
       source,
       total: matches.length,
@@ -2566,6 +2581,18 @@ function App() {
   const stripeMatchedClientIds = new Set(stripeMatches.filter(match => match.client).map(match => match.client.id));
   const stripeUnmatchedCustomers = stripeMatches.filter(match => !match.client);
   const stripeUnmatchedClients = clients.filter(client => !stripeMatchedClientIds.has(client.id));
+  const filteredStripeMatches = stripeMatches.filter((match) => {
+    if (stripeReviewFilter === 'available') {
+      return match.canSync;
+    }
+    if (stripeReviewFilter === 'synced') {
+      return match.alreadySynced;
+    }
+    if (stripeReviewFilter === 'unmatched') {
+      return !match.client;
+    }
+    return true;
+  });
 
   const normalizedStripeCustomerSearch = stripeCustomerMergeSearch.trim().toLowerCase();
   const normalizedStripeClientSearch = stripeClientMergeSearch.trim().toLowerCase();
@@ -4586,9 +4613,33 @@ function App() {
                       {stripeSyncStats.source ? ` · Source: ${stripeSyncStats.source}` : ''}.
                     </p>
                     <div className="stripe-customer-badges" style={{ marginTop: '0.5rem' }}>
-                      <span className="stripe-summary-pill">{stripeSyncStats.available} available to sync</span>
-                      <span className="stripe-summary-pill">{stripeSyncStats.alreadySynced} already synced</span>
-                      <span className="stripe-summary-pill">{stripeSyncStats.unmatched} unmatched</span>
+                      <span
+                        className="stripe-summary-pill"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleStripeReviewFilter('available')}
+                        onKeyDown={(event) => handleStripeReviewFilterKeyDown(event, 'available')}
+                      >
+                        {stripeSyncStats.available} available to sync
+                      </span>
+                      <span
+                        className="stripe-summary-pill"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleStripeReviewFilter('synced')}
+                        onKeyDown={(event) => handleStripeReviewFilterKeyDown(event, 'synced')}
+                      >
+                        {stripeSyncStats.alreadySynced} already synced
+                      </span>
+                      <span
+                        className="stripe-summary-pill"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleStripeReviewFilter('unmatched')}
+                        onKeyDown={(event) => handleStripeReviewFilterKeyDown(event, 'unmatched')}
+                      >
+                        {stripeSyncStats.unmatched} unmatched
+                      </span>
                     </div>
                   </div>
                   <div>
@@ -4609,7 +4660,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {stripeMatches.map((match) => {
+                      {filteredStripeMatches.map((match) => {
                         const isSelected = stripeMatchSelection.has(match.id);
                         const activeSubscriptions = match.stripeCustomer.subscriptions.filter(subscription => subscription.status === 'active');
                         const monthlyValue = getMonthlyRecurringRevenue(activeSubscriptions);
