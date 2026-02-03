@@ -1430,6 +1430,60 @@ function App() {
     );
   };
 
+  const handleStripeCreateClient = () => {
+    if (!stripeMergeSelection.stripeCustomerId) {
+      return;
+    }
+    const stripeMatch = stripeMatches.find(match => match.stripeCustomer.id === stripeMergeSelection.stripeCustomerId);
+    if (!stripeMatch) return;
+    const stripeCustomer = stripeMatch.stripeCustomer;
+    const newClientId = `stripe-${stripeCustomer.id}-${Date.now()}`;
+    const newClient = {
+      id: newClientId,
+      businessName: stripeCustomer.company || stripeCustomer.name || 'Stripe customer',
+      contactName: stripeCustomer.name || '',
+      phone: stripeCustomer.phone || '',
+      email: stripeCustomer.email || '',
+      service: '',
+      location: '',
+      budget: '',
+      goals: '',
+      notes: '',
+      website: '',
+      access: '',
+      status: 'Paused',
+      stripeProfile: {
+        customerId: stripeCustomer.id,
+        name: stripeCustomer.name || '',
+        email: stripeCustomer.email || '',
+        phone: stripeCustomer.phone || '',
+        company: stripeCustomer.company || '',
+        currency: stripeCustomer.currency || 'usd'
+      },
+      stripeSubscriptions: stripeCustomer.subscriptions || []
+    };
+    setClients(prev => [newClient, ...prev]);
+    setStripeMatches(prev => prev.map(match => {
+      if (match.stripeCustomer.id !== stripeCustomer.id) return match;
+      return {
+        ...match,
+        client: newClient,
+        matchReasons: ['New client'],
+        confidence: 'Created',
+        canSync: true
+      };
+    }));
+    setStripeMergeSelection({
+      stripeCustomerId: '',
+      clientId: ''
+    });
+    showToast(
+      'success',
+      'Client added',
+      `${newClient.businessName} was added from Stripe with a paused status.`
+    );
+  };
+
   const buildAircallAuthHeader = (tokenOverride, appIdOverride) => {
     const credentials = btoa(`${appIdOverride}:${tokenOverride}`);
     return `Basic ${credentials}`;
@@ -2785,7 +2839,7 @@ function App() {
                     <div>
                       <h4>Unmatched Stripe customers</h4>
                       <p className="stripe-merge-note">
-                        Select one Stripe customer to pair with a client record.
+                        Select one Stripe customer to pair with a client record or add them as a new client (status stays paused).
                         {normalizedStripeCustomerSearch && (
                           <span className="stripe-merge-note"> Showing {filteredStripeUnmatchedCustomers.length} of {stripeUnmatchedCustomers.length}.</span>
                         )}
@@ -2930,6 +2984,13 @@ function App() {
                       disabled={!stripeMergeSelection.stripeCustomerId || !stripeMergeSelection.clientId}
                     >
                       Merge Selected
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={handleStripeCreateClient}
+                      disabled={!stripeMergeSelection.stripeCustomerId}
+                    >
+                      Add as new client
                     </button>
                     <button className="btn-primary" onClick={() => setStripeSyncStage('complete')}>
                       Finish Sync <ArrowRight size={16} />
