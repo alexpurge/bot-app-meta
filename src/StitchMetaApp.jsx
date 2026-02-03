@@ -230,8 +230,8 @@ const STYLES = `
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1.5rem 2rem;
+    justify-content: flex-end;
+    padding: 2rem 2rem;
     position: sticky;
     top: 0;
     left: 0;
@@ -240,6 +240,7 @@ const STYLES = `
     backdrop-filter: blur(10px);
     width: 100%;
     box-sizing: border-box;
+    min-height: 96px;
   }
 
   .grid-portfolio {
@@ -1790,16 +1791,6 @@ export default function StitchMetaApp({ accessToken = '', embedded = false, onLo
 
       {/* NAV */}
       <nav className="nav-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '40px', height: '40px', background: 'var(--logo-bg)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden' }} onClick={() => setSelectedAccount(null)}>
-            <img src={LOGO_URL} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: '1rem' }}>Purge Digital</h2>
-            <span className="text-small" style={{ fontSize: '0.6rem' }}>Master Controller</span>
-          </div>
-        </div>
-        
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {selectedAccount ? (
             <button className="text-small" style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', gap: '0.5rem' }} onClick={() => setSelectedAccount(null)}>

@@ -130,7 +130,10 @@ const STYLES = `
   
   /* Sidebar Elements */
   .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
-  .brand { font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 0.6rem; letter-spacing: -0.05em; }
+  .brand { display: flex; align-items: center; gap: 0.75rem; }
+  .brand-text { display: flex; flex-direction: column; gap: 0.15rem; }
+  .brand-name { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text-primary); }
+  .brand-subtitle { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); }
   .brand-logo-container { 
     width: 40px; 
     height: 40px; 
@@ -2286,12 +2289,15 @@ function App() {
         {/* Sidebar */}
         <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-header">
-            <h1 className="brand">
+            <div className="brand">
               <span className="brand-logo-container">
-                <img className="brand-logo" src={purgeLogo} alt="Purge CRM logo" />
+                <img className="brand-logo" src={purgeLogo} alt="Purge Digital logo" />
               </span>
-              PURGE<span className="brand-accent">CRM</span>
-            </h1>
+              <span className="brand-text">
+                <span className="brand-name">Purge Digital</span>
+                <span className="brand-subtitle">Master Controller</span>
+              </span>
+            </div>
           </div>
           
           <nav className="nav-menu">
