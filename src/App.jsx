@@ -1915,6 +1915,32 @@ function App() {
     && client.stripeSubscriptions.some(subscription => subscription.status === 'active')
   );
 
+  const handleMetaClientSync = () => {
+    if (!selectedClient) {
+      showToast('error', 'Select a client', 'Open a client to sync Meta data.');
+      return;
+    }
+    const accountId = metaAccountInput.trim() || selectedClient.metaAccountId?.toString().trim() || '';
+    if (!accountId) {
+      showToast('error', 'Meta account ID required', 'Add a Meta Ads account ID to sync this client.');
+      return;
+    }
+    handleMetaLookup(null, accountId);
+  };
+
+  const handleGoogleClientSync = () => {
+    if (!selectedClient) {
+      showToast('error', 'Select a client', 'Open a client to sync Google Ads data.');
+      return;
+    }
+    const accountId = googleAccountInput.trim() || selectedClient.googleAccountId?.toString().trim() || '';
+    if (!accountId) {
+      showToast('error', 'Google Ads customer ID required', 'Add a Google Ads customer ID to sync this client.');
+      return;
+    }
+    handleGoogleLookup(null, accountId);
+  };
+
   const openStripeSync = () => {
     if (!stripeApiKey.trim()) {
       showToast('error', 'Stripe key required', 'Add your Stripe API key on the login screen to sync Stripe data.');
@@ -2367,15 +2393,18 @@ function App() {
     }
   };
 
-  const handleMetaLookup = async (event) => {
+  const handleMetaLookup = async (event, overrideAccountId) => {
     if (event?.preventDefault) {
       event.preventDefault();
     }
     if (!selectedClient) return;
-    const accountId = metaAccountInput.trim();
+    const accountId = (overrideAccountId ?? metaAccountInput).trim();
     if (!accountId) {
       showToast('error', 'Meta account ID required', 'Enter a Meta Ads account ID to continue.');
       return;
+    }
+    if (accountId !== metaAccountInput) {
+      setMetaAccountInput(accountId);
     }
 
     setMetaByClient(prev => ({
@@ -2434,15 +2463,18 @@ function App() {
     }));
   };
 
-  const handleGoogleLookup = async (event) => {
+  const handleGoogleLookup = async (event, overrideAccountId) => {
     if (event?.preventDefault) {
       event.preventDefault();
     }
     if (!selectedClient) return;
-    const accountId = googleAccountInput.trim();
+    const accountId = (overrideAccountId ?? googleAccountInput).trim();
     if (!accountId) {
       showToast('error', 'Google Ads customer ID required', 'Enter a Google Ads customer ID to continue.');
       return;
+    }
+    if (accountId !== googleAccountInput) {
+      setGoogleAccountInput(accountId);
     }
 
     setGoogleByClient(prev => ({
@@ -3202,6 +3234,8 @@ function App() {
     : [];
   const selectedMetaEntry = selectedClient ? metaByClient[selectedClient.id] : null;
   const selectedGoogleEntry = selectedClient ? googleByClient[selectedClient.id] : null;
+  const resolvedMetaAccountId = metaAccountInput.trim() || selectedClient?.metaAccountId?.toString().trim() || '';
+  const resolvedGoogleAccountId = googleAccountInput.trim() || selectedClient?.googleAccountId?.toString().trim() || '';
   const metaTeamRoster = useMemo(() => {
     const changeHistory = selectedMetaEntry?.data?.changeHistory || [];
     const teamRoster = Array.isArray(selectedMetaEntry?.data?.team) ? selectedMetaEntry.data.team : [];
@@ -4423,6 +4457,22 @@ function App() {
                         >
                           <Edit2 size={18} />
                           Edit Client
+                        </button>
+                        <button
+                          onClick={handleMetaClientSync}
+                          className="btn-sync"
+                          disabled={selectedMetaEntry?.status === 'loading' || !resolvedMetaAccountId}
+                        >
+                          <RefreshCw size={18} />
+                          {selectedMetaEntry?.status === 'loading' ? 'Syncing Meta...' : 'Sync with Meta'}
+                        </button>
+                        <button
+                          onClick={handleGoogleClientSync}
+                          className="btn-sync"
+                          disabled={selectedGoogleEntry?.status === 'loading' || !resolvedGoogleAccountId}
+                        >
+                          <RefreshCw size={18} />
+                          {selectedGoogleEntry?.status === 'loading' ? 'Syncing Google...' : 'Sync with Google'}
                         </button>
                         <button
                           onClick={handleStripeClientSync}
