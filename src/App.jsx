@@ -202,6 +202,12 @@ const STYLES = `
   .btn-stripe { background: linear-gradient(135deg, #635bff 0%, #7a73ff 45%, #917bff 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; box-shadow: 0 8px 20px -12px rgba(99, 91, 255, 0.6); transition: transform 0.1s, box-shadow 0.2s; white-space: nowrap; height: 3.125rem; }
   .btn-stripe:hover { box-shadow: 0 10px 26px -14px rgba(99, 91, 255, 0.75); }
   .btn-stripe:active { transform: scale(0.98); }
+  .btn-google-sync { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #3b82f6 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; box-shadow: 0 8px 20px -12px rgba(37, 99, 235, 0.6); transition: transform 0.1s, box-shadow 0.2s; white-space: nowrap; height: 3.125rem; }
+  .btn-google-sync:hover { box-shadow: 0 10px 26px -14px rgba(37, 99, 235, 0.75); }
+  .btn-google-sync:active { transform: scale(0.98); }
+  .btn-meta-sync { background: linear-gradient(135deg, #0f172a 0%, #0ea5e9 50%, #22d3ee 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; box-shadow: 0 8px 20px -12px rgba(34, 211, 238, 0.6); transition: transform 0.1s, box-shadow 0.2s; white-space: nowrap; height: 3.125rem; }
+  .btn-meta-sync:hover { box-shadow: 0 10px 26px -14px rgba(34, 211, 238, 0.75); }
+  .btn-meta-sync:active { transform: scale(0.98); }
   
   .btn-bulk-delete { background-color: rgba(248, 113, 113, 0.12); color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
   .btn-bulk-delete:hover { background-color: rgba(248, 113, 113, 0.2); }
@@ -1011,6 +1017,8 @@ function App() {
   const [bulkActionType, setBulkActionType] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isStripeSyncOpen, setIsStripeSyncOpen] = useState(false);
+  const [isGoogleAdsSyncOpen, setIsGoogleAdsSyncOpen] = useState(false);
+  const [isMetaAdsSyncOpen, setIsMetaAdsSyncOpen] = useState(false);
   const [stripeApiKey, setStripeApiKey] = useState(() => localStorage.getItem(STRIPE_API_KEY_KEY) || '');
   const [stripeSyncStage, setStripeSyncStage] = useState('review');
   const [stripeMatches, setStripeMatches] = useState([]);
@@ -1022,6 +1030,40 @@ function App() {
   const [stripeCustomerMergeSearch, setStripeCustomerMergeSearch] = useState('');
   const [stripeClientMergeSearch, setStripeClientMergeSearch] = useState('');
   const [stripeSyncStats, setStripeSyncStats] = useState({
+    source: '',
+    total: 0,
+    available: 0,
+    matched: 0,
+    alreadySynced: 0,
+    unmatched: 0
+  });
+  const [googleAdsSyncStage, setGoogleAdsSyncStage] = useState('review');
+  const [googleAdsMatches, setGoogleAdsMatches] = useState([]);
+  const [googleAdsMatchSelection, setGoogleAdsMatchSelection] = useState(new Set());
+  const [googleAdsMergeSelection, setGoogleAdsMergeSelection] = useState({
+    accountId: '',
+    clientId: ''
+  });
+  const [googleAdsAccountSearch, setGoogleAdsAccountSearch] = useState('');
+  const [googleAdsClientSearch, setGoogleAdsClientSearch] = useState('');
+  const [googleAdsSyncStats, setGoogleAdsSyncStats] = useState({
+    source: '',
+    total: 0,
+    available: 0,
+    matched: 0,
+    alreadySynced: 0,
+    unmatched: 0
+  });
+  const [metaAdsSyncStage, setMetaAdsSyncStage] = useState('review');
+  const [metaAdsMatches, setMetaAdsMatches] = useState([]);
+  const [metaAdsMatchSelection, setMetaAdsMatchSelection] = useState(new Set());
+  const [metaAdsMergeSelection, setMetaAdsMergeSelection] = useState({
+    accountId: '',
+    clientId: ''
+  });
+  const [metaAdsAccountSearch, setMetaAdsAccountSearch] = useState('');
+  const [metaAdsClientSearch, setMetaAdsClientSearch] = useState('');
+  const [metaAdsSyncStats, setMetaAdsSyncStats] = useState({
     source: '',
     total: 0,
     available: 0,
@@ -1822,6 +1864,292 @@ function App() {
     return Array.from(merged.values());
   };
 
+  const buildAdsFixtureAccounts = (type) => {
+    const today = new Date();
+    const baseAccounts = clients.slice(0, 8).map((client, index) => {
+      const accountId = type === 'google' ? `ga-${2200 + index}` : `ma-${3200 + index}`;
+      const baseName = client.businessName || `Account ${index + 1}`;
+      const accountName = `${baseName} ${type === 'google' ? 'Google Ads' : 'Meta Ads'}`;
+      const billingEmail = client.email || `accounts@${baseName.toLowerCase().replace(/\s+/g, '')}.com`;
+      const website = client.website && client.website !== 'Not Listed'
+        ? client.website
+        : `https://${baseName.toLowerCase().replace(/\s+/g, '')}.com.au`;
+      const impressions = 18000 + index * 3200;
+      const clicks = 480 + index * 55;
+      const ctr = Number(((clicks / impressions) * 100).toFixed(2));
+      const cpc = 320 + index * 40;
+      const cpm = 1800 + index * 110;
+      const spendCents = 145000 + index * 18000;
+      const metrics = type === 'google'
+        ? {
+            impressions,
+            clicks,
+            ctr: ctr / 100,
+            averageCpc: (cpc / 100) * 1_000_000,
+            averageCpm: (cpm / 100) * 1_000_000,
+            costMicros: spendCents * 10_000
+          }
+        : {
+            impressions,
+            clicks,
+            ctr,
+            cpc,
+            cpm,
+            spend: spendCents
+          };
+
+      const overview = type === 'google'
+        ? {
+            id: accountId,
+            name: accountName,
+            currency_code: 'AUD',
+            time_zone: BRISBANE_TIME_ZONE,
+            status: 'ENABLED'
+          }
+        : {
+            id: accountId,
+            name: accountName,
+            currency: 'AUD',
+            timezone_name: BRISBANE_TIME_ZONE,
+            account_status: 'ACTIVE'
+          };
+
+      const team = [
+        {
+          id: `${accountId}-owner`,
+          name: client.contactName || `${baseName} Owner`,
+          role: 'Account owner',
+          email: billingEmail,
+          accessLabels: ['Admin', 'Billing']
+        },
+        {
+          id: `${accountId}-strategist`,
+          name: `Strategy ${index + 1}`,
+          role: 'Media strategist',
+          email: `strategist${index + 1}@agency.com`,
+          accessLabels: ['Campaigns', 'Reporting']
+        }
+      ];
+
+      const changeHistory = Array.from({ length: 4 }).map((_, logIndex) => ({
+        event_time: new Date(today.getTime() - (logIndex + 1) * 86400000).toISOString(),
+        actor_name: logIndex % 2 === 0 ? team[0].name : team[1].name,
+        event_type: logIndex % 2 === 0 ? 'UPDATE' : 'CREATE',
+        translated_event_type: logIndex % 2 === 0 ? 'Updated ads' : 'Created campaign',
+        object_name: logIndex % 2 === 0 ? 'Ad Set' : 'Campaign',
+        object_type: logIndex % 2 === 0 ? 'adset' : 'campaign',
+        object_id: `${accountId}-${logIndex + 1}`
+      }));
+
+      return {
+        id: accountId,
+        name: accountName,
+        billingEmail,
+        website,
+        overview,
+        metrics,
+        team,
+        changeHistory
+      };
+    });
+
+    const extraAccounts = [
+      {
+        id: type === 'google' ? 'ga-55301' : 'ma-77321',
+        name: type === 'google' ? 'Nova Fitness Google Ads' : 'Nova Fitness Meta Ads',
+        billingEmail: 'finance@novafitness.com.au',
+        website: 'https://novafitness.com.au',
+        overview: type === 'google'
+          ? {
+              id: type === 'google' ? 'ga-55301' : 'ma-77321',
+              name: 'Nova Fitness Google Ads',
+              currency_code: 'AUD',
+              time_zone: BRISBANE_TIME_ZONE,
+              status: 'ENABLED'
+            }
+          : {
+              id: type === 'google' ? 'ga-55301' : 'ma-77321',
+              name: 'Nova Fitness Meta Ads',
+              currency: 'AUD',
+              timezone_name: BRISBANE_TIME_ZONE,
+              account_status: 'ACTIVE'
+            },
+        metrics: type === 'google'
+          ? {
+              impressions: 28500,
+              clicks: 980,
+              ctr: 0.034,
+              averageCpc: 280 * 10_000,
+              averageCpm: 1900 * 10_000,
+              costMicros: 210000000
+            }
+          : {
+              impressions: 28500,
+              clicks: 980,
+              ctr: 3.4,
+              cpc: 280,
+              cpm: 1900,
+              spend: 210000
+            },
+        team: [
+          {
+            id: `${type}-nova-owner`,
+            name: 'Paige Harmon',
+            role: 'Account owner',
+            email: 'paige@novafitness.com.au',
+            accessLabels: ['Admin', 'Billing']
+          }
+        ],
+        changeHistory: [
+          {
+            event_time: new Date(today.getTime() - 3 * 86400000).toISOString(),
+            actor_name: 'Paige Harmon',
+            event_type: 'UPDATE',
+            translated_event_type: 'Updated budgets',
+            object_name: 'Q4 Promo Campaign',
+            object_type: 'campaign',
+            object_id: `${type}-nova-campaign`
+          }
+        ]
+      }
+    ];
+
+    return [...baseAccounts, ...extraAccounts];
+  };
+
+  const normalizeMatchValue = (value) => normalizeValue(value).replace(/[^a-z0-9]/g, '');
+
+  const extractDomain = (value) => {
+    if (!value) return '';
+    const stripped = value.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+    return stripped.split('/')[0].toLowerCase();
+  };
+
+  const findAdsClientMatch = (account, type) => {
+    if (!account) return { client: null, reasons: [] };
+    const accountName = normalizeMatchValue(account.name);
+    const billingDomain = extractDomain(account.billingEmail);
+    const websiteDomain = extractDomain(account.website);
+
+    let bestMatch = null;
+    let bestScore = 0;
+    let bestReasons = [];
+
+    clients.forEach(client => {
+      const clientName = normalizeMatchValue(client.businessName);
+      const clientContact = normalizeMatchValue(client.contactName);
+      const clientEmailDomain = extractDomain(client.email);
+      const clientWebsiteDomain = extractDomain(client.website);
+      let score = 0;
+      const reasons = [];
+
+      if (clientName && (accountName.includes(clientName) || clientName.includes(accountName))) {
+        score += 3;
+        reasons.push('Business name');
+      }
+      if (clientContact && accountName.includes(clientContact)) {
+        score += 1;
+        reasons.push('Contact name');
+      }
+      if (billingDomain && (billingDomain === clientEmailDomain || billingDomain === clientWebsiteDomain)) {
+        score += 2;
+        reasons.push('Billing domain');
+      }
+      if (websiteDomain && (websiteDomain === clientWebsiteDomain || websiteDomain === clientEmailDomain)) {
+        score += 2;
+        reasons.push('Website domain');
+      }
+
+      if (score > bestScore) {
+        bestMatch = client;
+        bestScore = score;
+        bestReasons = reasons;
+      }
+    });
+
+    if (!bestMatch || bestScore === 0) {
+      return { client: null, reasons: [] };
+    }
+
+    return { client: bestMatch, reasons: bestReasons };
+  };
+
+  const buildAdsMatches = (accounts = [], type) => {
+    const existingAccountIds = new Set(
+      clients
+        .map(client => (type === 'google' ? client.googleAccountId : client.metaAccountId))
+        .filter(Boolean)
+        .map(value => value.toString())
+    );
+    return accounts.map(account => {
+      const { client, reasons } = findAdsClientMatch(account, type);
+      const alreadySynced = existingAccountIds.has(account.id);
+      const matchReasons = alreadySynced ? ['Account ID'] : reasons;
+      return {
+        id: account.id,
+        account,
+        client,
+        canSync: Boolean(client) && !alreadySynced,
+        alreadySynced,
+        matchReasons
+      };
+    });
+  };
+
+  const mergeAdsAccountIntoClient = (client, account, type) => {
+    if (!client || !account) return client;
+    if (type === 'google') {
+      return {
+        ...client,
+        googleAccountId: account.id,
+        googleOverview: account.overview,
+        googleMetrics: account.metrics,
+        googleTeam: account.team,
+        googleChangeHistory: account.changeHistory
+      };
+    }
+    return {
+      ...client,
+      metaAccountId: account.id,
+      metaOverview: account.overview,
+      metaMetrics: account.metrics,
+      metaTeam: account.team,
+      metaChangeHistory: account.changeHistory
+    };
+  };
+
+  const fetchGoogleAdsAccounts = async () => {
+    const fallbackAccounts = buildAdsFixtureAccounts('google');
+    if (!googleAccessToken || !googleDeveloperToken) {
+      return {
+        accounts: fallbackAccounts,
+        source: 'Sample data',
+        warning: 'Google Ads credentials missing. Showing sample Google Ads accounts.'
+      };
+    }
+    return {
+      accounts: fallbackAccounts,
+      source: 'Sample data',
+      warning: 'Google Ads API calls are blocked in the browser. Showing sample Google Ads accounts.'
+    };
+  };
+
+  const fetchMetaAdsAccounts = async () => {
+    const fallbackAccounts = buildAdsFixtureAccounts('meta');
+    if (!metaAccessToken) {
+      return {
+        accounts: fallbackAccounts,
+        source: 'Sample data',
+        warning: 'Meta system user token missing. Showing sample Meta Ads accounts.'
+      };
+    }
+    return {
+      accounts: fallbackAccounts,
+      source: 'Sample data',
+      warning: 'Meta Ads API calls are blocked in the browser. Showing sample Meta Ads accounts.'
+    };
+  };
+
   const fetchStripeCustomerDetails = async (apiKey, customerId) => {
     const fallbackCustomers = buildStripeFixtureCustomers();
     const fixtureCustomer = fallbackCustomers.find(customer => customer.id === customerId);
@@ -2339,6 +2667,370 @@ function App() {
       'success',
       'Client added',
       `${newClient.businessName} was added from Stripe with a paused status.`
+    );
+  };
+
+  const openGoogleAdsSync = () => {
+    setGoogleAdsMatchSelection(new Set());
+    setGoogleAdsMergeSelection({ accountId: '', clientId: '' });
+    setGoogleAdsAccountSearch('');
+    setGoogleAdsClientSearch('');
+    setGoogleAdsSyncStage('loading');
+    setIsGoogleAdsSyncOpen(true);
+    void prepareGoogleAdsSync();
+  };
+
+  const closeGoogleAdsSync = () => {
+    setIsGoogleAdsSyncOpen(false);
+    setGoogleAdsSyncStage('review');
+  };
+
+  const prepareGoogleAdsSync = async () => {
+    setGoogleAdsSyncStage('loading');
+    const { accounts, source, warning } = await fetchGoogleAdsAccounts();
+    const matches = buildAdsMatches(accounts, 'google');
+    const availableCount = matches.filter(match => match.canSync).length;
+    const matchedCount = matches.filter(match => match.client).length;
+    const alreadySyncedCount = matches.filter(match => match.alreadySynced).length;
+    const unmatchedCount = matches.filter(match => !match.client).length;
+    setGoogleAdsMatches(matches);
+    setGoogleAdsMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
+    setGoogleAdsSyncStats({
+      source,
+      total: matches.length,
+      available: availableCount,
+      matched: matchedCount,
+      alreadySynced: alreadySyncedCount,
+      unmatched: unmatchedCount
+    });
+    setGoogleAdsSyncStage('review');
+    if (warning) {
+      showToast('error', 'Google Ads sync fallback', warning);
+    } else {
+      showToast('success', 'Google Ads sync ready', `Pulled ${matches.length} Google Ads accounts.`);
+    }
+  };
+
+  const toggleGoogleAdsMatch = (id) => {
+    const match = googleAdsMatches.find(item => item.id === id);
+    if (match && !match.canSync) return;
+    setGoogleAdsMatchSelection(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllGoogleAdsMatches = () => {
+    const selectableIds = googleAdsMatches.filter(match => match.canSync).map(match => match.id);
+    if (googleAdsMatchSelection.size === selectableIds.length) {
+      setGoogleAdsMatchSelection(new Set());
+    } else {
+      setGoogleAdsMatchSelection(new Set(selectableIds));
+    }
+  };
+
+  const confirmGoogleAdsMatches = () => {
+    const selectedMatches = googleAdsMatches.filter(match => match.canSync && googleAdsMatchSelection.has(match.id));
+    const updatedClients = clients.map(client => {
+      const match = selectedMatches.find(selected => selected.client?.id === client.id);
+      if (!match) return client;
+      return mergeAdsAccountIntoClient(client, match.account, 'google');
+    });
+    setClients(updatedClients);
+    if (selectedClient) {
+      const refreshedClient = updatedClients.find(client => client.id === selectedClient.id);
+      if (refreshedClient) {
+        setSelectedClient(refreshedClient);
+      }
+    }
+    setGoogleByClient(prev => {
+      const next = { ...prev };
+      selectedMatches.forEach(match => {
+        if (!match.client) return;
+        next[match.client.id] = {
+          accountId: match.account.id,
+          status: 'success',
+          error: null,
+          logs: [],
+          source: 'google-sync',
+          data: {
+            overview: match.account.overview,
+            metrics: match.account.metrics,
+            team: match.account.team,
+            changeHistory: match.account.changeHistory
+          }
+        };
+      });
+      return next;
+    });
+    const hasUnmatchedAccounts = googleAdsMatches.some(match => !match.client);
+    const hasUnmatchedClients = updatedClients.some(client => !client.googleAccountId);
+    setGoogleAdsSyncStage(hasUnmatchedAccounts || hasUnmatchedClients ? 'merge' : 'complete');
+    showToast(
+      'success',
+      'Google Ads sync confirmed',
+      `Linked ${selectedMatches.length} Google Ads accounts to client records.`
+    );
+  };
+
+  const googleAdsUnmatchedAccounts = googleAdsMatches.filter(match => !match.client);
+  const googleAdsUnmatchedClients = clients.filter(client => !client.googleAccountId);
+
+  const normalizedGoogleAdsAccountSearch = googleAdsAccountSearch.trim().toLowerCase();
+  const normalizedGoogleAdsClientSearch = googleAdsClientSearch.trim().toLowerCase();
+  const googleAdsAccountSearchMatches = (value) => value?.toLowerCase().includes(normalizedGoogleAdsAccountSearch);
+  const googleAdsClientSearchMatches = (value) => value?.toLowerCase().includes(normalizedGoogleAdsClientSearch);
+  const filteredGoogleAdsUnmatchedAccounts = googleAdsUnmatchedAccounts.filter(match => (
+    !normalizedGoogleAdsAccountSearch
+    || googleAdsAccountSearchMatches(match.account?.name)
+    || googleAdsAccountSearchMatches(match.account?.billingEmail)
+    || googleAdsAccountSearchMatches(match.account?.website)
+  ));
+  const filteredGoogleAdsUnmatchedClients = googleAdsUnmatchedClients.filter(client => (
+    !normalizedGoogleAdsClientSearch
+    || googleAdsClientSearchMatches(client.businessName)
+    || googleAdsClientSearchMatches(client.contactName)
+    || googleAdsClientSearchMatches(client.email)
+    || googleAdsClientSearchMatches(client.website)
+  ));
+
+  const handleGoogleAdsMergeSelection = (type, id) => {
+    setGoogleAdsMergeSelection(prev => ({
+      ...prev,
+      [type]: prev[type] === id ? '' : id
+    }));
+  };
+
+  const handleGoogleAdsManualMerge = () => {
+    if (!googleAdsMergeSelection.accountId || !googleAdsMergeSelection.clientId) {
+      return;
+    }
+    const match = googleAdsMatches.find(item => item.account.id === googleAdsMergeSelection.accountId);
+    const client = clients.find(item => item.id === googleAdsMergeSelection.clientId);
+    if (!match || !client) return;
+    const updatedClient = mergeAdsAccountIntoClient(client, match.account, 'google');
+    const updatedClients = clients.map(item => (item.id === client.id ? updatedClient : item));
+    setClients(updatedClients);
+    if (selectedClient?.id === client.id) {
+      setSelectedClient(updatedClient);
+    }
+    setGoogleByClient(prev => ({
+      ...prev,
+      [client.id]: {
+        accountId: match.account.id,
+        status: 'success',
+        error: null,
+        logs: [],
+        source: 'google-sync',
+        data: {
+          overview: match.account.overview,
+          metrics: match.account.metrics,
+          team: match.account.team,
+          changeHistory: match.account.changeHistory
+        }
+      }
+    }));
+    setGoogleAdsMatches(prev => prev.map(item => {
+      if (item.account.id !== match.account.id) return item;
+      return {
+        ...item,
+        client: updatedClient,
+        matchReasons: ['Manual'],
+        canSync: true
+      };
+    }));
+    setGoogleAdsMergeSelection({ accountId: '', clientId: '' });
+    showToast(
+      'success',
+      'Google Ads linked',
+      `Linked ${match.account.name} to ${updatedClient.businessName}.`
+    );
+  };
+
+  const openMetaAdsSync = () => {
+    setMetaAdsMatchSelection(new Set());
+    setMetaAdsMergeSelection({ accountId: '', clientId: '' });
+    setMetaAdsAccountSearch('');
+    setMetaAdsClientSearch('');
+    setMetaAdsSyncStage('loading');
+    setIsMetaAdsSyncOpen(true);
+    void prepareMetaAdsSync();
+  };
+
+  const closeMetaAdsSync = () => {
+    setIsMetaAdsSyncOpen(false);
+    setMetaAdsSyncStage('review');
+  };
+
+  const prepareMetaAdsSync = async () => {
+    setMetaAdsSyncStage('loading');
+    const { accounts, source, warning } = await fetchMetaAdsAccounts();
+    const matches = buildAdsMatches(accounts, 'meta');
+    const availableCount = matches.filter(match => match.canSync).length;
+    const matchedCount = matches.filter(match => match.client).length;
+    const alreadySyncedCount = matches.filter(match => match.alreadySynced).length;
+    const unmatchedCount = matches.filter(match => !match.client).length;
+    setMetaAdsMatches(matches);
+    setMetaAdsMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
+    setMetaAdsSyncStats({
+      source,
+      total: matches.length,
+      available: availableCount,
+      matched: matchedCount,
+      alreadySynced: alreadySyncedCount,
+      unmatched: unmatchedCount
+    });
+    setMetaAdsSyncStage('review');
+    if (warning) {
+      showToast('error', 'Meta Ads sync fallback', warning);
+    } else {
+      showToast('success', 'Meta Ads sync ready', `Pulled ${matches.length} Meta Ads accounts.`);
+    }
+  };
+
+  const toggleMetaAdsMatch = (id) => {
+    const match = metaAdsMatches.find(item => item.id === id);
+    if (match && !match.canSync) return;
+    setMetaAdsMatchSelection(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllMetaAdsMatches = () => {
+    const selectableIds = metaAdsMatches.filter(match => match.canSync).map(match => match.id);
+    if (metaAdsMatchSelection.size === selectableIds.length) {
+      setMetaAdsMatchSelection(new Set());
+    } else {
+      setMetaAdsMatchSelection(new Set(selectableIds));
+    }
+  };
+
+  const confirmMetaAdsMatches = () => {
+    const selectedMatches = metaAdsMatches.filter(match => match.canSync && metaAdsMatchSelection.has(match.id));
+    const updatedClients = clients.map(client => {
+      const match = selectedMatches.find(selected => selected.client?.id === client.id);
+      if (!match) return client;
+      return mergeAdsAccountIntoClient(client, match.account, 'meta');
+    });
+    setClients(updatedClients);
+    if (selectedClient) {
+      const refreshedClient = updatedClients.find(client => client.id === selectedClient.id);
+      if (refreshedClient) {
+        setSelectedClient(refreshedClient);
+      }
+    }
+    setMetaByClient(prev => {
+      const next = { ...prev };
+      selectedMatches.forEach(match => {
+        if (!match.client) return;
+        next[match.client.id] = {
+          accountId: match.account.id,
+          status: 'success',
+          error: null,
+          logs: [],
+          source: 'meta-sync',
+          data: {
+            overview: match.account.overview,
+            metrics: match.account.metrics,
+            team: match.account.team,
+            changeHistory: match.account.changeHistory
+          }
+        };
+      });
+      return next;
+    });
+    const hasUnmatchedAccounts = metaAdsMatches.some(match => !match.client);
+    const hasUnmatchedClients = updatedClients.some(client => !client.metaAccountId);
+    setMetaAdsSyncStage(hasUnmatchedAccounts || hasUnmatchedClients ? 'merge' : 'complete');
+    showToast(
+      'success',
+      'Meta Ads sync confirmed',
+      `Linked ${selectedMatches.length} Meta Ads accounts to client records.`
+    );
+  };
+
+  const metaAdsUnmatchedAccounts = metaAdsMatches.filter(match => !match.client);
+  const metaAdsUnmatchedClients = clients.filter(client => !client.metaAccountId);
+
+  const normalizedMetaAdsAccountSearch = metaAdsAccountSearch.trim().toLowerCase();
+  const normalizedMetaAdsClientSearch = metaAdsClientSearch.trim().toLowerCase();
+  const metaAdsAccountSearchMatches = (value) => value?.toLowerCase().includes(normalizedMetaAdsAccountSearch);
+  const metaAdsClientSearchMatches = (value) => value?.toLowerCase().includes(normalizedMetaAdsClientSearch);
+  const filteredMetaAdsUnmatchedAccounts = metaAdsUnmatchedAccounts.filter(match => (
+    !normalizedMetaAdsAccountSearch
+    || metaAdsAccountSearchMatches(match.account?.name)
+    || metaAdsAccountSearchMatches(match.account?.billingEmail)
+    || metaAdsAccountSearchMatches(match.account?.website)
+  ));
+  const filteredMetaAdsUnmatchedClients = metaAdsUnmatchedClients.filter(client => (
+    !normalizedMetaAdsClientSearch
+    || metaAdsClientSearchMatches(client.businessName)
+    || metaAdsClientSearchMatches(client.contactName)
+    || metaAdsClientSearchMatches(client.email)
+    || metaAdsClientSearchMatches(client.website)
+  ));
+
+  const handleMetaAdsMergeSelection = (type, id) => {
+    setMetaAdsMergeSelection(prev => ({
+      ...prev,
+      [type]: prev[type] === id ? '' : id
+    }));
+  };
+
+  const handleMetaAdsManualMerge = () => {
+    if (!metaAdsMergeSelection.accountId || !metaAdsMergeSelection.clientId) {
+      return;
+    }
+    const match = metaAdsMatches.find(item => item.account.id === metaAdsMergeSelection.accountId);
+    const client = clients.find(item => item.id === metaAdsMergeSelection.clientId);
+    if (!match || !client) return;
+    const updatedClient = mergeAdsAccountIntoClient(client, match.account, 'meta');
+    const updatedClients = clients.map(item => (item.id === client.id ? updatedClient : item));
+    setClients(updatedClients);
+    if (selectedClient?.id === client.id) {
+      setSelectedClient(updatedClient);
+    }
+    setMetaByClient(prev => ({
+      ...prev,
+      [client.id]: {
+        accountId: match.account.id,
+        status: 'success',
+        error: null,
+        logs: [],
+        source: 'meta-sync',
+        data: {
+          overview: match.account.overview,
+          metrics: match.account.metrics,
+          team: match.account.team,
+          changeHistory: match.account.changeHistory
+        }
+      }
+    }));
+    setMetaAdsMatches(prev => prev.map(item => {
+      if (item.account.id !== match.account.id) return item;
+      return {
+        ...item,
+        client: updatedClient,
+        matchReasons: ['Manual'],
+        canSync: true
+      };
+    }));
+    setMetaAdsMergeSelection({ accountId: '', clientId: '' });
+    showToast(
+      'success',
+      'Meta Ads linked',
+      `Linked ${match.account.name} to ${updatedClient.businessName}.`
     );
   };
 
@@ -3648,6 +4340,14 @@ function App() {
                         <Play size={18} />
                         <span>Sync with Stripe</span>
                       </button>
+                      <button onClick={openGoogleAdsSync} className="btn-google-sync">
+                        <RefreshCw size={18} />
+                        <span>Google Ads Sync</span>
+                      </button>
+                      <button onClick={openMetaAdsSync} className="btn-meta-sync">
+                        <RefreshCw size={18} />
+                        <span>Meta Ads Sync</span>
+                      </button>
                     </div>
                   </>
                 )}
@@ -4107,6 +4807,654 @@ function App() {
                 </p>
                 <div className="modal-actions" style={{ justifyContent: 'center' }}>
                   <button className="btn-primary" onClick={closeStripeSync}>Done</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
+
+        {/* GOOGLE ADS SYNC MODAL */}
+        <Modal isOpen={isGoogleAdsSyncOpen} onClose={closeGoogleAdsSync} className="stripe-modal-content">
+          <div className="modal-body stripe-modal">
+            <div className="stripe-modal-header">
+              <div>
+                <span className="section-label">Google Ads Sync</span>
+                <h2 className="modal-title">Sync Google Ads accounts</h2>
+                <p className="stripe-subtitle">
+                  Review Google Ads billing accounts, match them to your client database, and connect the records you approve.
+                </p>
+              </div>
+              <span className="stripe-pill">
+                <ShieldCheck size={14} /> Secure connection
+              </span>
+            </div>
+
+            <div className="stripe-stepper">
+              <span className={`stripe-step ${googleAdsSyncStage === 'loading' ? 'active' : googleAdsSyncStage === 'review' || googleAdsSyncStage === 'merge' || googleAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+                <Table size={14} /> Pull Google Ads Accounts
+              </span>
+              <span className={`stripe-step ${googleAdsSyncStage === 'review' ? 'active' : googleAdsSyncStage === 'merge' || googleAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+                <CheckCircle size={14} /> Match Review
+              </span>
+              <span className={`stripe-step ${googleAdsSyncStage === 'merge' ? 'active' : googleAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+                <Users size={14} /> Link Accounts
+              </span>
+            </div>
+
+            {googleAdsSyncStage === 'loading' && (
+              <div className="stripe-loading">
+                <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Pulling Google Ads accounts...</h3>
+                <p className="stripe-subtitle">Fetching accounts and preparing match suggestions.</p>
+                <div className="stripe-loading-bar" />
+              </div>
+            )}
+
+            {googleAdsSyncStage === 'review' && (
+              <div className="stripe-results">
+                <div className="stripe-results-header">
+                  <div>
+                    <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Review Google Ads matches</h3>
+                    <p className="stripe-results-meta">
+                      {googleAdsSyncStats.total} Google Ads accounts pulled
+                      {googleAdsSyncStats.source ? ` · Source: ${googleAdsSyncStats.source}` : ''}.
+                    </p>
+                    <div className="stripe-customer-badges" style={{ marginTop: '0.5rem' }}>
+                      <span className="stripe-summary-pill">{googleAdsSyncStats.available} available to sync</span>
+                      <span className="stripe-summary-pill">{googleAdsSyncStats.alreadySynced} already linked</span>
+                      <span className="stripe-summary-pill">{googleAdsSyncStats.unmatched} unmatched</span>
+                    </div>
+                  </div>
+                  <div>
+                    <button className="stripe-select-all" onClick={toggleAllGoogleAdsMatches}>
+                      {googleAdsMatchSelection.size === googleAdsMatches.filter(match => match.canSync).length ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
+                </div>
+                <div className="stripe-table-wrapper">
+                  <table className="stripe-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '60px' }}>Select</th>
+                        <th>Google Ads Account</th>
+                        <th>Client Database</th>
+                        <th>Matched by</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {googleAdsMatches.map((match) => {
+                        const isSelected = googleAdsMatchSelection.has(match.id);
+                        const spend = match.account.metrics?.costMicros
+                          ? formatGoogleMicros(match.account.metrics.costMicros, match.account.overview?.currency_code)
+                          : 'Unavailable';
+                        return (
+                          <tr key={match.id} className={match.canSync ? '' : 'stripe-row-disabled'}>
+                            <td>
+                              <div
+                                className={`card-select-checkbox ${isSelected ? 'checked' : ''}`}
+                                onClick={() => toggleGoogleAdsMatch(match.id)}
+                                style={{ width: '1.25rem', height: '1.25rem', cursor: match.canSync ? 'pointer' : 'not-allowed' }}
+                              >
+                                {isSelected && <Check size={12} />}
+                              </div>
+                            </td>
+                            <td>
+                              <div className="stripe-customer-card">
+                                <span className="stripe-customer-title">{match.account.name}</span>
+                                <span className="stripe-customer-sub">ID: {match.account.overview?.id}</span>
+                                <span className="stripe-customer-sub">{match.account.billingEmail}</span>
+                                <span className="stripe-customer-sub">{match.account.website}</span>
+                                <span className="stripe-customer-sub">Spend (30d): {spend}</span>
+                              </div>
+                            </td>
+                            <td>
+                              {match.client ? (
+                                <div className="stripe-customer-card">
+                                  <span className="stripe-customer-title">{match.client.businessName}</span>
+                                  <span className="stripe-customer-sub">{match.client.contactName}</span>
+                                  <span className="stripe-customer-sub">{match.client.email}</span>
+                                  <span className="stripe-customer-sub">{match.client.location}</span>
+                                </div>
+                              ) : (
+                                <span className="stripe-no-match">No client match found</span>
+                              )}
+                            </td>
+                            <td>
+                              {match.matchReasons.length ? (
+                                match.matchReasons.map((reason) => (
+                                  <span key={reason} className="stripe-match-pill">{reason}</span>
+                                ))
+                              ) : (
+                                <span className="stripe-no-match">Awaiting manual match</span>
+                              )}
+                            </td>
+                            <td>
+                              {match.alreadySynced ? (
+                                <span className="stripe-verify">
+                                  <CheckCircle size={14} /> Linked
+                                </span>
+                              ) : match.client ? (
+                                <span className="stripe-verify">
+                                  <CheckCircle size={14} /> Ready
+                                </span>
+                              ) : (
+                                <span className="stripe-no-match">Needs review</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="stripe-review-actions">
+                  <button className="btn-ghost" onClick={closeGoogleAdsSync}>Close</button>
+                  <button className="btn-primary" onClick={confirmGoogleAdsMatches} disabled={googleAdsMatchSelection.size === 0}>
+                    Link Selected <ArrowRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {googleAdsSyncStage === 'merge' && (
+              <div className="stripe-results">
+                <div className="stripe-results-header">
+                  <div>
+                    <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Link remaining Google Ads accounts</h3>
+                    <p className="stripe-results-meta">
+                      {googleAdsUnmatchedAccounts.length} unlinked accounts · {googleAdsUnmatchedClients.length} clients without a Google Ads account.
+                    </p>
+                  </div>
+                </div>
+                <div className="stripe-merge-grid">
+                  <div className="stripe-merge-card">
+                    <h4>Unlinked Google Ads accounts</h4>
+                    <p className="stripe-merge-note">
+                      Select a Google Ads account to link to a client record.
+                      {normalizedGoogleAdsAccountSearch && (
+                        <span className="stripe-merge-note"> Showing {filteredGoogleAdsUnmatchedAccounts.length} of {googleAdsUnmatchedAccounts.length}.</span>
+                      )}
+                    </p>
+                    <div className="stripe-merge-actions">
+                      <div className="stripe-merge-search">
+                        <input
+                          placeholder="Search Google Ads accounts"
+                          className="stripe-search-input"
+                          value={googleAdsAccountSearch}
+                          onChange={(event) => setGoogleAdsAccountSearch(event.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="stripe-table-wrapper">
+                      <table className="stripe-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '60px' }}>Select</th>
+                            <th>Account</th>
+                            <th>Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredGoogleAdsUnmatchedAccounts.length === 0 ? (
+                            <tr>
+                              <td colSpan="3" className="stripe-no-match">
+                                {googleAdsUnmatchedAccounts.length === 0
+                                  ? 'All Google Ads accounts are linked.'
+                                  : 'No Google Ads accounts match your search.'}
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredGoogleAdsUnmatchedAccounts.map(match => (
+                              <tr key={match.account.id}>
+                                <td>
+                                  <div
+                                    className={`card-select-checkbox ${googleAdsMergeSelection.accountId === match.account.id ? 'checked' : ''}`}
+                                    onClick={() => handleGoogleAdsMergeSelection('accountId', match.account.id)}
+                                    style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                                  >
+                                    {googleAdsMergeSelection.accountId === match.account.id && <Check size={12} />}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-title">{match.account.name}</span>
+                                    <span className="stripe-customer-sub">ID: {match.account.overview?.id}</span>
+                                    <span className="stripe-customer-sub">{match.account.billingEmail}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-sub">{match.account.website}</span>
+                                    <span className="stripe-customer-sub">Spend: {formatGoogleMicros(match.account.metrics?.costMicros, match.account.overview?.currency_code)}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="stripe-merge-card">
+                    <h4>Client records without a Google Ads link</h4>
+                    <p className="stripe-merge-note">
+                      Select a client record to link with the chosen Google Ads account.
+                      {normalizedGoogleAdsClientSearch && (
+                        <span className="stripe-merge-note"> Showing {filteredGoogleAdsUnmatchedClients.length} of {googleAdsUnmatchedClients.length}.</span>
+                      )}
+                    </p>
+                    <div className="stripe-merge-actions">
+                      <div className="stripe-merge-search">
+                        <input
+                          placeholder="Search client records"
+                          className="stripe-search-input"
+                          value={googleAdsClientSearch}
+                          onChange={(event) => setGoogleAdsClientSearch(event.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="stripe-table-wrapper">
+                      <table className="stripe-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '60px' }}>Select</th>
+                            <th>Client</th>
+                            <th>Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredGoogleAdsUnmatchedClients.length === 0 ? (
+                            <tr>
+                              <td colSpan="3" className="stripe-no-match">
+                                {googleAdsUnmatchedClients.length === 0
+                                  ? 'All clients have a Google Ads link.'
+                                  : 'No client records match your search.'}
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredGoogleAdsUnmatchedClients.map(client => (
+                              <tr key={client.id}>
+                                <td>
+                                  <div
+                                    className={`card-select-checkbox ${googleAdsMergeSelection.clientId === client.id ? 'checked' : ''}`}
+                                    onClick={() => handleGoogleAdsMergeSelection('clientId', client.id)}
+                                    style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                                  >
+                                    {googleAdsMergeSelection.clientId === client.id && <Check size={12} />}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-title">{client.businessName}</span>
+                                    <span className="stripe-customer-sub">{client.contactName}</span>
+                                    <span className="stripe-customer-sub">{client.email}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-sub">{client.phone}</span>
+                                    <span className="stripe-customer-sub">{client.location}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                <div className="stripe-merge-actions" style={{ marginTop: '1.5rem' }}>
+                  <button className="btn-ghost" onClick={() => setGoogleAdsSyncStage('review')}>Back</button>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={handleGoogleAdsManualMerge}
+                      disabled={!googleAdsMergeSelection.accountId || !googleAdsMergeSelection.clientId}
+                    >
+                      Link Selected
+                    </button>
+                    <button className="btn-primary" onClick={() => setGoogleAdsSyncStage('complete')}>
+                      Finish Sync <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {googleAdsSyncStage === 'complete' && (
+              <div className="stripe-loading">
+                <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Google Ads sync complete</h3>
+                <p className="stripe-subtitle">
+                  Linked accounts are now available in each client’s Google Ads snapshot tabs.
+                </p>
+                <div className="modal-actions" style={{ justifyContent: 'center' }}>
+                  <button className="btn-primary" onClick={closeGoogleAdsSync}>Done</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
+
+        {/* META ADS SYNC MODAL */}
+        <Modal isOpen={isMetaAdsSyncOpen} onClose={closeMetaAdsSync} className="stripe-modal-content">
+          <div className="modal-body stripe-modal">
+            <div className="stripe-modal-header">
+              <div>
+                <span className="section-label">Meta Ads Sync</span>
+                <h2 className="modal-title">Sync Meta Ads accounts</h2>
+                <p className="stripe-subtitle">
+                  Review Meta Ads billing accounts, match them to your client database, and connect the records you approve.
+                </p>
+              </div>
+              <span className="stripe-pill">
+                <ShieldCheck size={14} /> Secure connection
+              </span>
+            </div>
+
+            <div className="stripe-stepper">
+              <span className={`stripe-step ${metaAdsSyncStage === 'loading' ? 'active' : metaAdsSyncStage === 'review' || metaAdsSyncStage === 'merge' || metaAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+                <Table size={14} /> Pull Meta Ads Accounts
+              </span>
+              <span className={`stripe-step ${metaAdsSyncStage === 'review' ? 'active' : metaAdsSyncStage === 'merge' || metaAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+                <CheckCircle size={14} /> Match Review
+              </span>
+              <span className={`stripe-step ${metaAdsSyncStage === 'merge' ? 'active' : metaAdsSyncStage === 'complete' ? 'complete' : ''}`}>
+                <Users size={14} /> Link Accounts
+              </span>
+            </div>
+
+            {metaAdsSyncStage === 'loading' && (
+              <div className="stripe-loading">
+                <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Pulling Meta Ads accounts...</h3>
+                <p className="stripe-subtitle">Fetching accounts and preparing match suggestions.</p>
+                <div className="stripe-loading-bar" />
+              </div>
+            )}
+
+            {metaAdsSyncStage === 'review' && (
+              <div className="stripe-results">
+                <div className="stripe-results-header">
+                  <div>
+                    <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Review Meta Ads matches</h3>
+                    <p className="stripe-results-meta">
+                      {metaAdsSyncStats.total} Meta Ads accounts pulled
+                      {metaAdsSyncStats.source ? ` · Source: ${metaAdsSyncStats.source}` : ''}.
+                    </p>
+                    <div className="stripe-customer-badges" style={{ marginTop: '0.5rem' }}>
+                      <span className="stripe-summary-pill">{metaAdsSyncStats.available} available to sync</span>
+                      <span className="stripe-summary-pill">{metaAdsSyncStats.alreadySynced} already linked</span>
+                      <span className="stripe-summary-pill">{metaAdsSyncStats.unmatched} unmatched</span>
+                    </div>
+                  </div>
+                  <div>
+                    <button className="stripe-select-all" onClick={toggleAllMetaAdsMatches}>
+                      {metaAdsMatchSelection.size === metaAdsMatches.filter(match => match.canSync).length ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
+                </div>
+                <div className="stripe-table-wrapper">
+                  <table className="stripe-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '60px' }}>Select</th>
+                        <th>Meta Ads Account</th>
+                        <th>Client Database</th>
+                        <th>Matched by</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metaAdsMatches.map((match) => {
+                        const isSelected = metaAdsMatchSelection.has(match.id);
+                        const spend = match.account.metrics?.spend
+                          ? formatCurrency(match.account.metrics.spend, match.account.overview?.currency)
+                          : 'Unavailable';
+                        return (
+                          <tr key={match.id} className={match.canSync ? '' : 'stripe-row-disabled'}>
+                            <td>
+                              <div
+                                className={`card-select-checkbox ${isSelected ? 'checked' : ''}`}
+                                onClick={() => toggleMetaAdsMatch(match.id)}
+                                style={{ width: '1.25rem', height: '1.25rem', cursor: match.canSync ? 'pointer' : 'not-allowed' }}
+                              >
+                                {isSelected && <Check size={12} />}
+                              </div>
+                            </td>
+                            <td>
+                              <div className="stripe-customer-card">
+                                <span className="stripe-customer-title">{match.account.name}</span>
+                                <span className="stripe-customer-sub">ID: {match.account.overview?.id}</span>
+                                <span className="stripe-customer-sub">{match.account.billingEmail}</span>
+                                <span className="stripe-customer-sub">{match.account.website}</span>
+                                <span className="stripe-customer-sub">Spend (30d): {spend}</span>
+                              </div>
+                            </td>
+                            <td>
+                              {match.client ? (
+                                <div className="stripe-customer-card">
+                                  <span className="stripe-customer-title">{match.client.businessName}</span>
+                                  <span className="stripe-customer-sub">{match.client.contactName}</span>
+                                  <span className="stripe-customer-sub">{match.client.email}</span>
+                                  <span className="stripe-customer-sub">{match.client.location}</span>
+                                </div>
+                              ) : (
+                                <span className="stripe-no-match">No client match found</span>
+                              )}
+                            </td>
+                            <td>
+                              {match.matchReasons.length ? (
+                                match.matchReasons.map((reason) => (
+                                  <span key={reason} className="stripe-match-pill">{reason}</span>
+                                ))
+                              ) : (
+                                <span className="stripe-no-match">Awaiting manual match</span>
+                              )}
+                            </td>
+                            <td>
+                              {match.alreadySynced ? (
+                                <span className="stripe-verify">
+                                  <CheckCircle size={14} /> Linked
+                                </span>
+                              ) : match.client ? (
+                                <span className="stripe-verify">
+                                  <CheckCircle size={14} /> Ready
+                                </span>
+                              ) : (
+                                <span className="stripe-no-match">Needs review</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="stripe-review-actions">
+                  <button className="btn-ghost" onClick={closeMetaAdsSync}>Close</button>
+                  <button className="btn-primary" onClick={confirmMetaAdsMatches} disabled={metaAdsMatchSelection.size === 0}>
+                    Link Selected <ArrowRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {metaAdsSyncStage === 'merge' && (
+              <div className="stripe-results">
+                <div className="stripe-results-header">
+                  <div>
+                    <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Link remaining Meta Ads accounts</h3>
+                    <p className="stripe-results-meta">
+                      {metaAdsUnmatchedAccounts.length} unlinked accounts · {metaAdsUnmatchedClients.length} clients without a Meta Ads account.
+                    </p>
+                  </div>
+                </div>
+                <div className="stripe-merge-grid">
+                  <div className="stripe-merge-card">
+                    <h4>Unlinked Meta Ads accounts</h4>
+                    <p className="stripe-merge-note">
+                      Select a Meta Ads account to link to a client record.
+                      {normalizedMetaAdsAccountSearch && (
+                        <span className="stripe-merge-note"> Showing {filteredMetaAdsUnmatchedAccounts.length} of {metaAdsUnmatchedAccounts.length}.</span>
+                      )}
+                    </p>
+                    <div className="stripe-merge-actions">
+                      <div className="stripe-merge-search">
+                        <input
+                          placeholder="Search Meta Ads accounts"
+                          className="stripe-search-input"
+                          value={metaAdsAccountSearch}
+                          onChange={(event) => setMetaAdsAccountSearch(event.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="stripe-table-wrapper">
+                      <table className="stripe-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '60px' }}>Select</th>
+                            <th>Account</th>
+                            <th>Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredMetaAdsUnmatchedAccounts.length === 0 ? (
+                            <tr>
+                              <td colSpan="3" className="stripe-no-match">
+                                {metaAdsUnmatchedAccounts.length === 0
+                                  ? 'All Meta Ads accounts are linked.'
+                                  : 'No Meta Ads accounts match your search.'}
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredMetaAdsUnmatchedAccounts.map(match => (
+                              <tr key={match.account.id}>
+                                <td>
+                                  <div
+                                    className={`card-select-checkbox ${metaAdsMergeSelection.accountId === match.account.id ? 'checked' : ''}`}
+                                    onClick={() => handleMetaAdsMergeSelection('accountId', match.account.id)}
+                                    style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                                  >
+                                    {metaAdsMergeSelection.accountId === match.account.id && <Check size={12} />}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-title">{match.account.name}</span>
+                                    <span className="stripe-customer-sub">ID: {match.account.overview?.id}</span>
+                                    <span className="stripe-customer-sub">{match.account.billingEmail}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-sub">{match.account.website}</span>
+                                    <span className="stripe-customer-sub">Spend: {formatCurrency(match.account.metrics?.spend, match.account.overview?.currency)}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="stripe-merge-card">
+                    <h4>Client records without a Meta Ads link</h4>
+                    <p className="stripe-merge-note">
+                      Select a client record to link with the chosen Meta Ads account.
+                      {normalizedMetaAdsClientSearch && (
+                        <span className="stripe-merge-note"> Showing {filteredMetaAdsUnmatchedClients.length} of {metaAdsUnmatchedClients.length}.</span>
+                      )}
+                    </p>
+                    <div className="stripe-merge-actions">
+                      <div className="stripe-merge-search">
+                        <input
+                          placeholder="Search client records"
+                          className="stripe-search-input"
+                          value={metaAdsClientSearch}
+                          onChange={(event) => setMetaAdsClientSearch(event.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="stripe-table-wrapper">
+                      <table className="stripe-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '60px' }}>Select</th>
+                            <th>Client</th>
+                            <th>Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredMetaAdsUnmatchedClients.length === 0 ? (
+                            <tr>
+                              <td colSpan="3" className="stripe-no-match">
+                                {metaAdsUnmatchedClients.length === 0
+                                  ? 'All clients have a Meta Ads link.'
+                                  : 'No client records match your search.'}
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredMetaAdsUnmatchedClients.map(client => (
+                              <tr key={client.id}>
+                                <td>
+                                  <div
+                                    className={`card-select-checkbox ${metaAdsMergeSelection.clientId === client.id ? 'checked' : ''}`}
+                                    onClick={() => handleMetaAdsMergeSelection('clientId', client.id)}
+                                    style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                                  >
+                                    {metaAdsMergeSelection.clientId === client.id && <Check size={12} />}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-title">{client.businessName}</span>
+                                    <span className="stripe-customer-sub">{client.contactName}</span>
+                                    <span className="stripe-customer-sub">{client.email}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="stripe-customer-card">
+                                    <span className="stripe-customer-sub">{client.phone}</span>
+                                    <span className="stripe-customer-sub">{client.location}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                <div className="stripe-merge-actions" style={{ marginTop: '1.5rem' }}>
+                  <button className="btn-ghost" onClick={() => setMetaAdsSyncStage('review')}>Back</button>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={handleMetaAdsManualMerge}
+                      disabled={!metaAdsMergeSelection.accountId || !metaAdsMergeSelection.clientId}
+                    >
+                      Link Selected
+                    </button>
+                    <button className="btn-primary" onClick={() => setMetaAdsSyncStage('complete')}>
+                      Finish Sync <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {metaAdsSyncStage === 'complete' && (
+              <div className="stripe-loading">
+                <h3 className="modal-title" style={{ fontSize: '1.5rem' }}>Meta Ads sync complete</h3>
+                <p className="stripe-subtitle">
+                  Linked accounts are now available in each client’s Meta Ads snapshot tabs.
+                </p>
+                <div className="modal-actions" style={{ justifyContent: 'center' }}>
+                  <button className="btn-primary" onClick={closeMetaAdsSync}>Done</button>
                 </div>
               </div>
             )}
