@@ -2987,14 +2987,41 @@ function App() {
       potentialClients.push(clientObj);
     }
 
-    if (potentialClients.length > 300) {
-       window.alert(`Warning: Parsed ${potentialClients.length} clients. This exceeds the expected limit of ~300. Please check the file format.`);
-    }
+    const normalizeText = (value) => String(value || '').trim().toLowerCase();
+    const normalizePhone = (value) => String(value || '').replace(/\D/g, '');
 
-    if (potentialClients.length > 0) {
-      setPendingImports(potentialClients);
+    const existingClients = clients.map(client => ({
+      businessName: normalizeText(client.businessName),
+      contactName: normalizeText(client.contactName),
+      email: normalizeText(client.email),
+      phone: normalizePhone(client.phone),
+      location: normalizeText(client.location)
+    }));
+
+    const isDuplicate = (client) => {
+      const candidate = {
+        businessName: normalizeText(client.businessName),
+        contactName: normalizeText(client.contactName),
+        email: normalizeText(client.email),
+        phone: normalizePhone(client.phone),
+        location: normalizeText(client.location)
+      };
+
+      return existingClients.some(existing => (
+        (candidate.businessName && candidate.businessName === existing.businessName) ||
+        (candidate.contactName && candidate.contactName === existing.contactName) ||
+        (candidate.email && candidate.email === existing.email) ||
+        (candidate.phone && candidate.phone === existing.phone) ||
+        (candidate.location && candidate.location === existing.location)
+      ));
+    };
+
+    const newClients = potentialClients.filter(client => !isDuplicate(client));
+
+    if (newClients.length > 0) {
+      setPendingImports(newClients);
       // Determine initial step based on phone issues
-      const hasPhoneIssues = potentialClients.some(c => c.phoneStatus === 'needs_format');
+      const hasPhoneIssues = newClients.some(c => c.phoneStatus === 'needs_format');
       if (hasPhoneIssues) {
          setImportReviewStep('phone_check');
          setPhoneFormatSelection(new Set()); // Start empty
@@ -3004,7 +3031,7 @@ function App() {
       setIsImportReviewOpen(true);
       setImportReviewTab('list');
     } else {
-      window.alert("No valid client blocks found. Please check the file matches the 8-row block format.");
+      window.alert("No new clients to import. Please check the file matches the 8-row block format.");
     }
   };
 
