@@ -26,6 +26,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Calendar,
   List,
   Bug,
   Check,
@@ -36,6 +37,7 @@ import {
   Play,
   Pause,
   XSquare,
+  RefreshCw,
   ChevronDown,
   ArrowRight,
   Eye
@@ -277,6 +279,9 @@ const STYLES = `
   .btn-danger:hover { background-color: rgba(248, 113, 113, 0.15); border-color: rgba(248, 113, 113, 0.35); }
   .btn-edit { background-color: rgba(15, 23, 42, 0.6); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.75rem; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.08); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; }
   .btn-edit:hover { background-color: rgba(15, 23, 42, 0.85); border-color: rgba(255, 255, 255, 0.16); }
+  .btn-sync { background: rgba(99, 91, 255, 0.2); color: #c7d2fe; padding: 0.5rem 1rem; border-radius: 0.75rem; font-weight: 600; border: 1px solid rgba(99, 91, 255, 0.4); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; }
+  .btn-sync:hover { background-color: rgba(99, 91, 255, 0.32); }
+  .btn-sync:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* Delete Confirmation Styles */
   .delete-confirm-container { text-align: center; padding: 2rem 1rem; }
@@ -395,6 +400,21 @@ const STYLES = `
   .detail-tabs { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
   .detail-tab { padding: 0.5rem 1rem; border-radius: 0.75rem 0.75rem 0 0; background: transparent; border: none; font-weight: 700; color: var(--text-secondary); cursor: pointer; }
   .detail-tab.active { color: var(--accent-primary); border-bottom: 3px solid var(--accent-primary); background: rgba(255, 93, 0, 0.12); }
+
+  .activity-tabs { display: flex; gap: 0.65rem; margin: 1rem 0 1.5rem; flex-wrap: wrap; }
+  .activity-tab { padding: 0.45rem 0.95rem; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 23, 42, 0.6); color: var(--text-secondary); font-size: 0.8rem; font-weight: 700; cursor: pointer; }
+  .activity-tab.active { background: rgba(255, 93, 0, 0.2); border-color: rgba(255, 93, 0, 0.4); color: var(--accent-primary); }
+  .activity-section { margin-bottom: 2rem; }
+  .activity-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+  .activity-section-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+  .activity-section-meta { color: var(--text-secondary); font-size: 0.8rem; }
+  .email-card, .billing-card { background-color: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.08); display: grid; gap: 0.5rem; }
+  .email-card-header, .billing-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+  .email-card-title, .billing-card-title { font-weight: 700; color: var(--text-primary); }
+  .email-card-meta, .billing-card-meta { color: var(--text-secondary); font-size: 0.85rem; display: grid; gap: 0.35rem; }
+  .email-status { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.6rem; border-radius: 999px; background: rgba(22, 163, 74, 0.16); color: #4ade80; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid rgba(22, 163, 74, 0.35); }
+  .billing-status { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.6rem; border-radius: 999px; background: rgba(99, 91, 255, 0.18); color: #c7d2fe; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid rgba(99, 91, 255, 0.35); }
+  .billing-empty { background: rgba(15, 23, 42, 0.45); padding: 1.5rem; border-radius: 0.85rem; border: 1px dashed rgba(255, 255, 255, 0.16); color: var(--text-secondary); }
 
   .meta-panel { border-radius: 1rem; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 23, 42, 0.6); padding: 1.5rem; box-shadow: 0 18px 35px rgba(0, 0, 0, 0.35); }
   .meta-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
@@ -917,12 +937,14 @@ function App() {
   const [aircallActivity, setAircallActivity] = useState({});
   const [toast, setToast] = useState(null);
   const [clientDetailTab, setClientDetailTab] = useState('overview');
+  const [clientActivityTab, setClientActivityTab] = useState('contact');
   const [clientMetaTab, setClientMetaTab] = useState('overview');
   const [metaAccountInput, setMetaAccountInput] = useState('');
   const [metaByClient, setMetaByClient] = useState({});
   const [clientGoogleTab, setClientGoogleTab] = useState('overview');
   const [googleAccountInput, setGoogleAccountInput] = useState('');
   const [googleByClient, setGoogleByClient] = useState({});
+  const [stripeClientSyncing, setStripeClientSyncing] = useState(false);
 
   // Import Review State
   const [isImportReviewOpen, setIsImportReviewOpen] = useState(false);
@@ -946,6 +968,7 @@ function App() {
   useEffect(() => {
     if (selectedClient) {
       setClientDetailTab('overview');
+      setClientActivityTab('contact');
       setClientMetaTab('overview');
       setClientGoogleTab('overview');
       const storedMeta = metaByClient[selectedClient.id];
@@ -974,6 +997,12 @@ function App() {
 
   const showToast = (type, title, message) => {
     setToast({ type, title, message });
+  };
+
+  const isValueMissing = (value) => {
+    if (value === null || value === undefined) return true;
+    const trimmed = String(value).trim();
+    return trimmed === '' || trimmed.toLowerCase() === 'not listed' || trimmed.toLowerCase() === 'unavailable';
   };
 
   const formatDuration = (seconds) => {
@@ -1019,6 +1048,35 @@ function App() {
     return date.toLocaleDateString('en-AU', {
       timeZone: BRISBANE_TIME_ZONE
     });
+  };
+
+  const buildSentEmailActivity = (client) => {
+    if (!client) return [];
+    if (Array.isArray(client.sentEmails) && client.sentEmails.length > 0) {
+      return client.sentEmails;
+    }
+    const baseEmail = !isValueMissing(client.email)
+      ? client.email
+      : `hello@${(client.businessName || 'client').toLowerCase().replace(/\s+/g, '')}.com`;
+    const today = new Date();
+    return [
+      {
+        id: `${client.id}-email-1`,
+        subject: 'Monthly performance recap',
+        to: baseEmail,
+        preview: 'Shared campaign highlights, lead quality, and proposed next steps.',
+        status: 'Sent',
+        sentAt: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 2, 9, 15).toISOString()
+      },
+      {
+        id: `${client.id}-email-2`,
+        subject: 'Creative approvals needed',
+        to: baseEmail,
+        preview: 'Awaiting feedback on the latest creative assets before launch.',
+        status: 'Sent',
+        sentAt: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6, 16, 45).toISOString()
+      }
+    ];
   };
 
   const normalizeMetaError = (error) => {
@@ -1415,6 +1473,7 @@ function App() {
         phone: client.phone,
         email: client.email || `billing@${client.businessName.toLowerCase().replace(/\s+/g, '')}.com`,
         currency: 'usd',
+        created: Math.floor(addDays(today, -365 - index * 12).getTime() / 1000),
         subscriptions
       };
     });
@@ -1427,6 +1486,7 @@ function App() {
         phone: '+61 412 993 441',
         email: 'kayla@renewalplumbing.com',
         currency: 'usd',
+        created: Math.floor(addDays(today, -420).getTime() / 1000),
         subscriptions: [
           {
             id: 'sub_fixture_renewal_1',
@@ -1449,6 +1509,7 @@ function App() {
         phone: '+61 400 221 815',
         email: 'billing@luminaevents.com',
         currency: 'usd',
+        created: Math.floor(addDays(today, -280).getTime() / 1000),
         subscriptions: [
           {
             id: 'sub_fixture_lumina_1',
@@ -1471,6 +1532,7 @@ function App() {
         phone: '+61 412 333 222',
         email: 'accounts@harborco.com',
         currency: 'usd',
+        created: Math.floor(addDays(today, -190).getTime() / 1000),
         subscriptions: []
       }
     ];
@@ -1523,6 +1585,117 @@ function App() {
     });
 
     return Array.from(byCustomer.values());
+  };
+
+  const buildStripeBillingActivity = (subscriptions = [], invoices = [], billingEmail = '') => {
+    const subscriptionItems = subscriptions.map(subscription => ({
+      id: subscription.id,
+      type: 'Subscription',
+      title: subscription.product || 'Subscription',
+      status: subscription.status || 'active',
+      product: subscription.product || 'Subscription',
+      amount: subscription.amount || 0,
+      currency: subscription.currency || 'usd',
+      interval: subscription.interval || 'month',
+      quantity: subscription.quantity || 1,
+      date: subscription.startedAt || subscription.currentPeriodEnd || null,
+      email: billingEmail || ''
+    }));
+
+    const invoiceItems = invoices.map(invoice => {
+      const firstLine = invoice.lines?.data?.[0] || {};
+      const lineProduct = firstLine.price?.product?.name || firstLine.description || 'Invoice item';
+      const invoiceAmount = invoice.amount_paid ?? invoice.amount_due ?? invoice.total ?? 0;
+      return {
+        id: invoice.id,
+        type: 'Invoice',
+        title: invoice.number ? `Invoice ${invoice.number}` : 'Invoice',
+        status: invoice.status || 'open',
+        amount: invoiceAmount,
+        currency: invoice.currency || 'usd',
+        interval: null,
+        quantity: 1,
+        date: invoice.created ? new Date(invoice.created * 1000).toISOString() : null,
+        email: invoice.customer_email || billingEmail || '',
+        product: lineProduct
+      };
+    });
+
+    return [...invoiceItems, ...subscriptionItems].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA;
+    });
+  };
+
+  const mergeStripeBillingActivity = (existing = [], incoming = []) => {
+    const merged = new Map();
+    existing.forEach(item => {
+      if (item?.id) merged.set(item.id, item);
+    });
+    incoming.forEach(item => {
+      if (item?.id && !merged.has(item.id)) {
+        merged.set(item.id, item);
+      }
+    });
+    return Array.from(merged.values());
+  };
+
+  const fetchStripeCustomerDetails = async (apiKey, customerId) => {
+    const fallbackCustomers = buildStripeFixtureCustomers();
+    const fixtureCustomer = fallbackCustomers.find(customer => customer.id === customerId);
+    const fallback = {
+      customer: fixtureCustomer || {
+        id: customerId,
+        name: '',
+        email: '',
+        phone: '',
+        company: '',
+        currency: 'usd'
+      },
+      subscriptions: fixtureCustomer?.subscriptions || [],
+      invoices: [],
+      source: 'Sample data',
+      warning: 'Stripe API calls are blocked in the browser. Showing sample Stripe billing activity.'
+    };
+
+    if (!apiKey?.trim()) {
+      return fallback;
+    }
+
+    try {
+      const headers = {
+        Authorization: `Bearer ${apiKey}`
+      };
+      const [customerResponse, subscriptionsResponse, invoicesResponse] = await Promise.all([
+        fetch(`https://api.stripe.com/v1/customers/${customerId}`, { headers }),
+        fetch(`https://api.stripe.com/v1/subscriptions?customer=${customerId}&status=all&limit=100&expand[]=data.items.data.price.product`, { headers }),
+        fetch(`https://api.stripe.com/v1/invoices?customer=${customerId}&limit=25&expand[]=data.lines.data.price.product`, { headers })
+      ]);
+
+      if (!customerResponse.ok) {
+        throw new Error(`Stripe API error: ${customerResponse.status}`);
+      }
+      if (!subscriptionsResponse.ok) {
+        throw new Error(`Stripe API error: ${subscriptionsResponse.status}`);
+      }
+      if (!invoicesResponse.ok) {
+        throw new Error(`Stripe API error: ${invoicesResponse.status}`);
+      }
+
+      const customer = await customerResponse.json();
+      const subscriptionsPayload = await subscriptionsResponse.json();
+      const invoicesPayload = await invoicesResponse.json();
+
+      return {
+        customer,
+        subscriptions: subscriptionsPayload.data || [],
+        invoices: invoicesPayload.data || [],
+        source: 'Stripe API'
+      };
+    } catch (error) {
+      return fallback;
+    }
   };
 
   const fetchStripeCustomers = async (apiKey) => {
@@ -1614,16 +1787,34 @@ function App() {
     };
   });
 
-  const mergeStripeCustomerIntoClient = (client, stripeCustomer) => {
+  const mergeStripeCustomerIntoClient = (client, stripeCustomer, options = {}) => {
     const existingSubscriptions = Array.isArray(client.stripeSubscriptions) ? client.stripeSubscriptions : [];
     const existingIds = new Set(existingSubscriptions.map(subscription => subscription.id));
     const incomingSubscriptions = Array.isArray(stripeCustomer.subscriptions) ? stripeCustomer.subscriptions : [];
     const newSubscriptions = incomingSubscriptions.filter(subscription => !existingIds.has(subscription.id));
     const stripeProfile = client.stripeProfile || {};
+    const customerSince = options.customerSince || stripeCustomer.customerSince || stripeProfile.customerSince || null;
+    const billingActivity = Array.isArray(options.billingActivity) ? options.billingActivity : [];
+    const existingBillingActivity = Array.isArray(client.stripeBillingActivity) ? client.stripeBillingActivity : [];
+    const resolvedBillingActivity = billingActivity.length
+      ? mergeStripeBillingActivity(existingBillingActivity, billingActivity)
+      : existingBillingActivity;
 
     return {
       updatedClient: {
         ...client,
+        businessName: isValueMissing(client.businessName)
+          ? stripeCustomer.company || stripeCustomer.name || client.businessName
+          : client.businessName,
+        contactName: isValueMissing(client.contactName)
+          ? stripeCustomer.name || client.contactName
+          : client.contactName,
+        email: isValueMissing(client.email)
+          ? stripeCustomer.email || client.email
+          : client.email,
+        phone: isValueMissing(client.phone)
+          ? stripeCustomer.phone || client.phone
+          : client.phone,
         stripeProfile: {
           ...stripeProfile,
           customerId: stripeProfile.customerId ?? stripeCustomer.id,
@@ -1631,9 +1822,11 @@ function App() {
           email: stripeProfile.email ?? stripeCustomer.email,
           phone: stripeProfile.phone ?? stripeCustomer.phone,
           company: stripeProfile.company ?? stripeCustomer.company,
-          currency: stripeProfile.currency ?? stripeCustomer.currency
+          currency: stripeProfile.currency ?? stripeCustomer.currency,
+          customerSince: stripeProfile.customerSince ?? customerSince
         },
-        stripeSubscriptions: [...existingSubscriptions, ...newSubscriptions]
+        stripeSubscriptions: [...existingSubscriptions, ...newSubscriptions],
+        stripeBillingActivity: resolvedBillingActivity
       },
       appendedCount: newSubscriptions.length
     };
@@ -1693,6 +1886,46 @@ function App() {
     } else {
       showToast('success', 'Stripe sync ready', `Pulled ${matches.length} Stripe customers.`);
     }
+  };
+
+  const handleStripeClientSync = async () => {
+    if (!selectedClient) return;
+    const customerId = selectedClient.stripeProfile?.customerId;
+    if (!customerId) {
+      showToast('error', 'Stripe customer ID missing', 'Add a Stripe customer ID before syncing this client.');
+      return;
+    }
+    setStripeClientSyncing(true);
+    const { customer, subscriptions, invoices, warning } = await fetchStripeCustomerDetails(stripeApiKey, customerId);
+    const stripeCustomerRecord = buildStripeCustomerRecords(customer ? [customer] : [], subscriptions)[0];
+    const resolvedStripeCustomer = stripeCustomerRecord || {
+      id: customerId,
+      name: customer?.name || '',
+      company: customer?.name || '',
+      phone: customer?.phone || '',
+      email: customer?.email || '',
+      currency: customer?.currency || 'usd',
+      subscriptions: []
+    };
+    const billingEmail = resolvedStripeCustomer.email || selectedClient.email || '';
+    const billingActivity = buildStripeBillingActivity(
+      resolvedStripeCustomer.subscriptions || [],
+      invoices,
+      billingEmail
+    );
+    const customerSince = customer?.created ? new Date(customer.created * 1000).toISOString() : null;
+    const { updatedClient } = mergeStripeCustomerIntoClient(selectedClient, resolvedStripeCustomer, {
+      billingActivity,
+      customerSince
+    });
+    setClients(prev => prev.map(client => (client.id === updatedClient.id ? updatedClient : client)));
+    setSelectedClient(updatedClient);
+    if (warning) {
+      showToast('error', 'Stripe sync fallback', warning);
+    } else {
+      showToast('success', 'Stripe sync complete', `Synced ${billingActivity.length} billing items for ${updatedClient.businessName}.`);
+    }
+    setStripeClientSyncing(false);
   };
 
   const toggleStripeMatch = (id) => {
@@ -2293,6 +2526,7 @@ function App() {
 
   const handleRecentActivityClick = () => {
     setClientDetailTab('activity');
+    setClientActivityTab('contact');
     if (!selectedClient) return;
     fetchAircallInteractions(selectedClient, {
       notify: false,
@@ -2819,6 +3053,18 @@ function App() {
     };
   const selectedSubscriptions = selectedClient?.stripeSubscriptions || [];
   const selectedStripeProfile = selectedClient?.stripeProfile || null;
+  const selectedSentEmails = selectedClient ? buildSentEmailActivity(selectedClient) : [];
+  const selectedBillingActivity = selectedClient
+    ? (
+      Array.isArray(selectedClient.stripeBillingActivity) && selectedClient.stripeBillingActivity.length > 0
+        ? selectedClient.stripeBillingActivity
+        : buildStripeBillingActivity(
+          selectedSubscriptions,
+          [],
+          selectedStripeProfile?.email || selectedClient.email || ''
+        )
+    )
+    : [];
   const selectedMetaEntry = selectedClient ? metaByClient[selectedClient.id] : null;
   const selectedGoogleEntry = selectedClient ? googleByClient[selectedClient.id] : null;
   const isLoggedIn = isAircallLoggedIn && isMetaLoggedIn;
@@ -3955,6 +4201,14 @@ function App() {
                             <MapPin className="info-icon" />
                             <span className="info-box-text">{selectedClient.location}</span>
                           </div>
+                          {selectedStripeProfile?.customerSince && (
+                            <div className="info-box">
+                              <Calendar className="info-icon" />
+                              <span className="info-box-text">
+                                Customer since {formatDateShort(selectedStripeProfile.customerSince)}
+                              </span>
+                            </div>
+                          )}
                         </>
                       ) : (
                         <>
@@ -4096,6 +4350,14 @@ function App() {
                           <Edit2 size={18} />
                           Edit Client
                         </button>
+                        <button
+                          onClick={handleStripeClientSync}
+                          className="btn-sync"
+                          disabled={stripeClientSyncing || !selectedStripeProfile?.customerId}
+                        >
+                          <RefreshCw size={18} />
+                          {stripeClientSyncing ? 'Syncing...' : 'Sync'}
+                        </button>
                         <button 
                           onClick={initiateDelete}
                           className="btn-danger"
@@ -4131,52 +4393,143 @@ function App() {
                         <div>
                           <h3 className="section-label">Recent Activity for {selectedClient.phone || 'Unknown number'}</h3>
                           <div className="login-helper">
-                            Showing {selectedActivity.items.length} interaction{selectedActivity.items.length === 1 ? '' : 's'} from the last 14 days (Account Management team).
+                            {clientActivityTab === 'contact'
+                              ? `Showing ${selectedActivity.items.length} Aircall interaction${selectedActivity.items.length === 1 ? '' : 's'} from the last 14 days, plus sent email history.`
+                              : `Showing ${selectedBillingActivity.length} Stripe billing update${selectedBillingActivity.length === 1 ? '' : 's'} for this customer.`}
                           </div>
                         </div>
                       </div>
 
-                      {selectedActivity.error && (
-                        <div className="activity-empty">
-                          <strong>Aircall Error:</strong> {selectedActivity.error}
-                        </div>
+                      <div className="activity-tabs">
+                        <button
+                          className={`activity-tab ${clientActivityTab === 'contact' ? 'active' : ''}`}
+                          onClick={() => setClientActivityTab('contact')}
+                          type="button"
+                        >
+                          Contact history
+                        </button>
+                        <button
+                          className={`activity-tab ${clientActivityTab === 'billing' ? 'active' : ''}`}
+                          onClick={() => setClientActivityTab('billing')}
+                          type="button"
+                        >
+                          Billing
+                        </button>
+                      </div>
+
+                      {clientActivityTab === 'contact' && (
+                        <>
+                          <div className="activity-section">
+                            <div className="activity-section-header">
+                              <h4 className="activity-section-title">Sent emails</h4>
+                              <span className="activity-section-meta">
+                                {selectedSentEmails.length} sent update{selectedSentEmails.length === 1 ? '' : 's'}
+                              </span>
+                            </div>
+                            {selectedSentEmails.length > 0 ? (
+                              <div className="activity-list">
+                                {selectedSentEmails.map((email) => (
+                                  <div key={email.id} className="email-card">
+                                    <div className="email-card-header">
+                                      <div className="email-card-title">{email.subject}</div>
+                                      <span className="email-status">{email.status}</span>
+                                    </div>
+                                    <div className="email-card-meta">
+                                      <div><strong>To:</strong> {email.to}</div>
+                                      <div><strong>Sent:</strong> {formatDateTime(email.sentAt)}</div>
+                                      <div><strong>Preview:</strong> {email.preview}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="activity-empty">No sent emails have been logged for this client yet.</div>
+                            )}
+                          </div>
+
+                          <div className="activity-section">
+                            <div className="activity-section-header">
+                              <h4 className="activity-section-title">Aircall contact history</h4>
+                              <span className="activity-section-meta">
+                                Last 14 days · {selectedActivity.items.length} call{selectedActivity.items.length === 1 ? '' : 's'}
+                              </span>
+                            </div>
+                            {selectedActivity.error && (
+                              <div className="activity-empty">
+                                <strong>Aircall Error:</strong> {selectedActivity.error}
+                              </div>
+                            )}
+
+                            {selectedActivity.items.length > 0 ? (
+                              <div className="activity-list">
+                                {selectedActivity.items.map((call, index) => (
+                                  <div key={`${call.id}-${index}`} className="activity-card">
+                                    <div className="activity-header">
+                                      <div className="activity-title">Call #{index + 1}</div>
+                                      <span className="status-indicator status-active">{call.status || call.direction || 'Call'}</span>
+                                    </div>
+                                    <div className="activity-meta">
+                                      <div><strong>Started at:</strong> {formatDateTime(call.startedAt)}</div>
+                                      <div><strong>In call time:</strong> {formatDuration(call.duration)}</div>
+                                      <div><strong>Caller:</strong> {call.userName || 'Unknown'}</div>
+                                      <div><strong>Status:</strong> {call.status || 'Unknown'}</div>
+                                      <div><strong>Disconnected by:</strong> {call.disconnectedBy || 'Unknown'}</div>
+                                      <div><strong>From:</strong> {call.fromNumber || 'Unknown'} • <strong>To:</strong> {call.toNumber || 'Unknown'}</div>
+                                    </div>
+                                    <div className="activity-actions">
+                                      {call.transcriptionUrl && (
+                                        <a className="activity-btn secondary" href={call.transcriptionUrl} target="_blank" rel="noreferrer">
+                                          <Eye size={16} /> Transcription
+                                        </a>
+                                      )}
+                                      {call.recordingUrl && (
+                                        <a className="activity-btn secondary" href={call.recordingUrl} target="_blank" rel="noreferrer">
+                                          <Play size={16} /> Recording
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              !selectedActivity.loading && !selectedActivity.error && (
+                                <div className="activity-empty">No recent interactions were found for this number in the last 14 days.</div>
+                              )
+                            )}
+                          </div>
+                        </>
                       )}
 
-                      {selectedActivity.items.length > 0 ? (
-                        <div className="activity-list">
-                          {selectedActivity.items.map((call, index) => (
-                            <div key={`${call.id}-${index}`} className="activity-card">
-                              <div className="activity-header">
-                                <div className="activity-title">Call #{index + 1}</div>
-                                <span className="status-indicator status-active">{call.status || call.direction || 'Call'}</span>
-                              </div>
-                              <div className="activity-meta">
-                                <div><strong>Started at:</strong> {formatDateTime(call.startedAt)}</div>
-                                <div><strong>In call time:</strong> {formatDuration(call.duration)}</div>
-                                <div><strong>Caller:</strong> {call.userName || 'Unknown'}</div>
-                                <div><strong>Status:</strong> {call.status || 'Unknown'}</div>
-                                <div><strong>Disconnected by:</strong> {call.disconnectedBy || 'Unknown'}</div>
-                                <div><strong>From:</strong> {call.fromNumber || 'Unknown'} • <strong>To:</strong> {call.toNumber || 'Unknown'}</div>
-                              </div>
-                              <div className="activity-actions">
-                                {call.transcriptionUrl && (
-                                  <a className="activity-btn secondary" href={call.transcriptionUrl} target="_blank" rel="noreferrer">
-                                    <Eye size={16} /> Transcription
-                                  </a>
-                                )}
-                                {call.recordingUrl && (
-                                  <a className="activity-btn secondary" href={call.recordingUrl} target="_blank" rel="noreferrer">
-                                    <Play size={16} /> Recording
-                                  </a>
-                                )}
-                              </div>
+                      {clientActivityTab === 'billing' && (
+                        <div className="activity-section">
+                          <div className="activity-section-header">
+                            <h4 className="activity-section-title">Stripe billing activity</h4>
+                            <span className="activity-section-meta">
+                              {selectedBillingActivity.length} billing item{selectedBillingActivity.length === 1 ? '' : 's'} synced
+                            </span>
+                          </div>
+                          {selectedBillingActivity.length > 0 ? (
+                            <div className="activity-list">
+                              {selectedBillingActivity.map((item) => (
+                                <div key={item.id} className="billing-card">
+                                  <div className="billing-card-header">
+                                    <div className="billing-card-title">{item.title}</div>
+                                    <span className="billing-status">{item.status}</span>
+                                  </div>
+                                  <div className="billing-card-meta">
+                                    <div><strong>Type:</strong> {item.type}</div>
+                                    <div><strong>Product line:</strong> {item.product || item.title}</div>
+                                    <div><strong>Email billed:</strong> {item.email || '—'}</div>
+                                    <div><strong>Amount:</strong> {formatCurrency(item.amount, item.currency)}{item.interval ? ` / ${item.interval}` : ''}</div>
+                                    <div><strong>Date:</strong> {item.date ? formatDateTime(item.date) : 'Unknown date'}</div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          ) : (
+                            <div className="billing-empty">No Stripe billing activity has been synced for this customer yet.</div>
+                          )}
                         </div>
-                      ) : (
-                        !selectedActivity.loading && !selectedActivity.error && (
-                          <div className="activity-empty">No recent interactions were found for this number in the last 14 days.</div>
-                        )
                       )}
 
                     </div>
