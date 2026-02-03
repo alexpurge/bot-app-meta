@@ -2171,6 +2171,26 @@ function App() {
     return payload;
   };
 
+  const fetchMetaGraphAll = async (endpoint, params = {}) => {
+    const items = [];
+    let after = null;
+    let hasNextPage = true;
+
+    while (hasNextPage) {
+      const pageParams = { ...params };
+      if (after) pageParams.after = after;
+
+      const payload = await callMetaGraphAPI(endpoint, pageParams);
+      const pageItems = Array.isArray(payload?.data) ? payload.data : [];
+      items.push(...pageItems);
+
+      after = payload?.paging?.cursors?.after || null;
+      hasNextPage = Boolean(after) && pageItems.length > 0;
+    }
+
+    return items;
+  };
+
   const toNumber = (value) => {
     if (value === null || value === undefined) return 0;
     const parsed = Number(value);
@@ -2179,8 +2199,16 @@ function App() {
 
   const buildMetaAdsAccountRecord = (account, insightsPayload, usersPayload, activitiesPayload) => {
     const insights = Array.isArray(insightsPayload?.data) ? insightsPayload.data[0] : null;
-    const teamMembers = Array.isArray(usersPayload?.data) ? usersPayload.data : [];
-    const activities = Array.isArray(activitiesPayload?.data) ? activitiesPayload.data : [];
+    const teamMembers = Array.isArray(usersPayload?.data)
+      ? usersPayload.data
+      : Array.isArray(usersPayload)
+        ? usersPayload
+        : [];
+    const activities = Array.isArray(activitiesPayload?.data)
+      ? activitiesPayload.data
+      : Array.isArray(activitiesPayload)
+        ? activitiesPayload
+        : [];
 
     return {
       id: account.id,
@@ -2192,11 +2220,21 @@ function App() {
         name: account.name,
         currency: account.currency,
         timezone_name: account.timezone_name,
+        timezone_offset_hours_utc: account.timezone_offset_hours_utc,
         account_status: account.account_status,
         balance: account.balance,
         spend_cap: account.spend_cap,
         amount_spent: account.amount_spent,
-        business_name: account.business_name
+        business_name: account.business_name,
+        business: account.business,
+        owner: account.owner,
+        created_time: account.created_time,
+        updated_time: account.updated_time,
+        disable_reason: account.disable_reason,
+        end_advertiser: account.end_advertiser,
+        end_advertiser_name: account.end_advertiser_name,
+        is_personal: account.is_personal,
+        media_agency: account.media_agency
       },
       metrics: {
         impressions: toNumber(insights?.impressions),
@@ -2204,7 +2242,11 @@ function App() {
         ctr: toNumber(insights?.ctr),
         cpc: toNumber(insights?.cpc),
         cpm: toNumber(insights?.cpm),
-        spend: toNumber(insights?.spend || account.amount_spent)
+        spend: toNumber(insights?.spend || account.amount_spent),
+        reach: toNumber(insights?.reach),
+        frequency: toNumber(insights?.frequency),
+        inline_link_clicks: toNumber(insights?.inline_link_clicks),
+        inline_link_click_ctr: toNumber(insights?.inline_link_click_ctr)
       },
       team: teamMembers.map(member => ({
         id: member.id,
@@ -2235,39 +2277,84 @@ function App() {
     }
 
     try {
-      const accountsPayload = await callMetaGraphAPI('me/adaccounts', {
-        fields: 'id,name,account_status,currency,timezone_name,amount_spent,balance,spend_cap,business_name,owner',
+      const accounts = await fetchMetaGraphAll('me/adaccounts', {
+        fields: [
+          'id',
+          'name',
+          'account_status',
+          'currency',
+          'timezone_name',
+          'timezone_offset_hours_utc',
+          'amount_spent',
+          'balance',
+          'spend_cap',
+          'business_name',
+          'business',
+          'owner',
+          'created_time',
+          'updated_time',
+          'disable_reason',
+          'end_advertiser',
+          'end_advertiser_name',
+          'is_personal',
+          'media_agency'
+        ].join(','),
         limit: '200'
       });
-      const accounts = Array.isArray(accountsPayload?.data) ? accountsPayload.data : [];
+      const warnings = [];
 
       const enrichedAccounts = await Promise.all(accounts.map(async (account) => {
-        const insightsPromise = callMetaGraphAPI(`${account.id}/insights`, {
-          fields: 'impressions,clicks,ctr,cpc,cpm,spend',
-          date_preset: 'last_30d',
-          limit: '1'
-        }).catch(() => null);
-        const usersPromise = callMetaGraphAPI(`${account.id}/assigned_users`, {
-          fields: 'id,name,email,role,permissions',
-          limit: '200'
-        }).catch(() => ({ data: [] }));
-        const activitiesPromise = callMetaGraphAPI(`${account.id}/activities`, {
-          fields: 'event_time,actor_name,event_type,translated_event_type,object_name,object_type,object_id',
-          limit: '25'
-        }).catch(() => ({ data: [] }));
-
-        const [insights, users, activities] = await Promise.all([
-          insightsPromise,
-          usersPromise,
-          activitiesPromise
+        const [insightsResult, usersResult, activitiesResult] = await Promise.allSettled([
+          callMetaGraphAPI(`${account.id}/insights`, {
+            fields: [
+              'impressions',
+              'clicks',
+              'ctr',
+              'cpc',
+              'cpm',
+              'spend',
+              'reach',
+              'frequency',
+              'inline_link_clicks',
+              'inline_link_click_ctr',
+              'actions',
+              'action_values',
+              'cost_per_action_type'
+            ].join(','),
+            date_preset: 'maximum',
+            limit: '1'
+          }),
+          fetchMetaGraphAll(`${account.id}/assigned_users`, {
+            fields: 'id,name,email,role,permissions',
+            limit: '200'
+          }),
+          fetchMetaGraphAll(`${account.id}/activities`, {
+            fields: 'event_time,actor_name,event_type,translated_event_type,object_name,object_type,object_id,object_link,extra_data,application_name',
+            limit: '200'
+          })
         ]);
+
+        if (insightsResult.status === 'rejected') {
+          warnings.push(`Insights unavailable for ${account.name || account.id}.`);
+        }
+        if (usersResult.status === 'rejected') {
+          warnings.push(`Team roster unavailable for ${account.name || account.id}.`);
+        }
+        if (activitiesResult.status === 'rejected') {
+          warnings.push(`Activity history unavailable for ${account.name || account.id}.`);
+        }
+
+        const insights = insightsResult.status === 'fulfilled' ? insightsResult.value : null;
+        const users = usersResult.status === 'fulfilled' ? usersResult.value : [];
+        const activities = activitiesResult.status === 'fulfilled' ? activitiesResult.value : [];
 
         return buildMetaAdsAccountRecord(account, insights, users, activities);
       }));
 
       return {
         accounts: enrichedAccounts,
-        source: 'Meta Ads API'
+        source: 'Meta Ads API',
+        warning: warnings.length ? warnings.join(' ') : undefined
       };
     } catch (error) {
       return {
