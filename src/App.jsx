@@ -208,6 +208,18 @@ const STYLES = `
   .btn-meta-sync { background: linear-gradient(135deg, #0f172a 0%, #0ea5e9 50%, #22d3ee 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; box-shadow: 0 8px 20px -12px rgba(34, 211, 238, 0.6); transition: transform 0.1s, box-shadow 0.2s; white-space: nowrap; height: 3.125rem; }
   .btn-meta-sync:hover { box-shadow: 0 10px 26px -14px rgba(34, 211, 238, 0.75); }
   .btn-meta-sync:active { transform: scale(0.98); }
+  .btn-stripe:disabled,
+  .btn-meta-sync:disabled {
+    background: rgba(148, 163, 184, 0.25);
+    color: rgba(226, 232, 240, 0.6);
+    box-shadow: none;
+    cursor: not-allowed;
+    filter: grayscale(0.35);
+  }
+  .btn-stripe:disabled:hover,
+  .btn-meta-sync:disabled:hover {
+    box-shadow: none;
+  }
   
   .btn-bulk-delete { background-color: rgba(248, 113, 113, 0.12); color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
   .btn-bulk-delete:hover { background-color: rgba(248, 113, 113, 0.2); }
@@ -2410,7 +2422,7 @@ function App() {
       showToast('error', 'Stripe key required', 'Add your Stripe API key on the login screen to sync Stripe data.');
       return;
     }
-    if (stripeMatches.length === 0) {
+    if (!stripeSyncStats.source) {
       showToast('error', 'Stripe sync not initialized', 'Initialize the workspace to pull Stripe customers before syncing.');
       return;
     }
@@ -2892,6 +2904,25 @@ function App() {
       showToast('success', 'Meta Ads sync ready', `Pulled ${matches.length} Meta Ads accounts.`);
     }
   };
+
+  useEffect(() => {
+    if (!stripeApiKey.trim()) return;
+    if (stripeSyncStats.source || stripeSyncStage === 'loading') return;
+    void prepareStripeSync(stripeApiKey);
+  }, [stripeApiKey, stripeSyncStage, stripeSyncStats.source]);
+
+  useEffect(() => {
+    if (!metaAccessToken.trim()) return;
+    if (metaAdsSyncStats.source || metaAdsSyncStage === 'loading') return;
+    void prepareMetaAdsSync();
+  }, [metaAccessToken, metaAdsSyncStage, metaAdsSyncStats.source]);
+
+  const isStripeSyncReady = Boolean(stripeApiKey.trim())
+    && Boolean(stripeSyncStats.source)
+    && stripeSyncStage !== 'loading';
+  const isMetaAdsSyncReady = Boolean(metaAccessToken.trim())
+    && Boolean(metaAdsSyncStats.source)
+    && metaAdsSyncStage !== 'loading';
 
   const toggleMetaAdsMatch = (id) => {
     const match = metaAdsMatches.find(item => item.id === id);
@@ -3469,7 +3500,9 @@ function App() {
     setStripeSyncStats({
       source: '',
       total: 0,
+      available: 0,
       matched: 0,
+      alreadySynced: 0,
       unmatched: 0
     });
     setStripeSyncStage('review');
@@ -3481,6 +3514,20 @@ function App() {
     setMetaAccessToken('');
     setMetaTokenInput('');
     setIsMetaLoggedIn(false);
+    setMetaAdsMatches([]);
+    setMetaAdsMatchSelection(new Set());
+    setMetaAdsMergeSelection({ accountId: '', clientId: '' });
+    setMetaAdsAccountSearch('');
+    setMetaAdsClientSearch('');
+    setMetaAdsSyncStats({
+      source: '',
+      total: 0,
+      available: 0,
+      matched: 0,
+      alreadySynced: 0,
+      unmatched: 0
+    });
+    setMetaAdsSyncStage('review');
     setGoogleAccessToken('');
     setGoogleDeveloperToken(DEFAULT_GOOGLE_DEVELOPER_TOKEN);
     setGoogleLoginCustomerId(DEFAULT_GOOGLE_LOGIN_CUSTOMER_ID);
@@ -4336,7 +4383,12 @@ function App() {
                           <span>Add New</span>
                         </button>
                       )}
-                      <button onClick={openStripeSync} className="btn-stripe">
+                      <button
+                        onClick={openStripeSync}
+                        className="btn-stripe"
+                        disabled={!isStripeSyncReady}
+                        title={isStripeSyncReady ? 'Sync Stripe customers' : 'Connect Stripe and load customers to enable sync'}
+                      >
                         <Play size={18} />
                         <span>Sync with Stripe</span>
                       </button>
@@ -4344,7 +4396,12 @@ function App() {
                         <RefreshCw size={18} />
                         <span>Google Ads Sync</span>
                       </button>
-                      <button onClick={openMetaAdsSync} className="btn-meta-sync">
+                      <button
+                        onClick={openMetaAdsSync}
+                        className="btn-meta-sync"
+                        disabled={!isMetaAdsSyncReady}
+                        title={isMetaAdsSyncReady ? 'Sync Meta Ads accounts' : 'Connect Meta and load accounts to enable sync'}
+                      >
                         <RefreshCw size={18} />
                         <span>Meta Ads Sync</span>
                       </button>
