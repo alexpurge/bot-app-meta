@@ -2114,16 +2114,29 @@ function App() {
     };
   };
 
+  const normalizeMetaAccountId = (value) => {
+    if (!value) return '';
+    const normalized = value.toString().trim();
+    return normalized.startsWith('act_') ? normalized.slice(4) : normalized;
+  };
+
   const buildAdsMatches = (accounts = [], type) => {
     const existingAccountIds = new Set(
-      clients
-        .map(client => (type === 'google' ? client.googleAccountId : client.metaAccountId))
+      (type === 'meta'
+        ? [
+          ...clients.map(client => client.metaAccountId),
+          ...Object.values(metaByClient || {}).map(entry => entry?.accountId)
+        ]
+        : clients.map(client => client.googleAccountId))
         .filter(Boolean)
-        .map(value => value.toString())
+        .map(value => (type === 'meta' ? normalizeMetaAccountId(value) : value.toString()))
     );
     return accounts.map(account => {
       const { client, reasons, score, candidates } = findAdsClientMatch(account, type);
       const alreadySynced = existingAccountIds.has(account.id);
+      const { client, reasons } = findAdsClientMatch(account, type);
+      const accountId = type === 'meta' ? normalizeMetaAccountId(account.id) : account.id;
+      const alreadySynced = existingAccountIds.has(accountId);
       const matchReasons = alreadySynced ? ['Account ID'] : reasons;
       return {
         id: account.id,
@@ -3317,10 +3330,17 @@ function App() {
     const conflictCount = matches.filter(match => match.isConflict).length;
     setMetaAdsMatches(matches);
     setMetaAdsMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
+    const visibleMatches = matches.filter(match => !match.alreadySynced);
+    const availableCount = visibleMatches.filter(match => match.canSync).length;
+    const matchedCount = visibleMatches.filter(match => match.client).length;
+    const alreadySyncedCount = visibleMatches.filter(match => match.alreadySynced).length;
+    const unmatchedCount = visibleMatches.filter(match => !match.client).length;
+    setMetaAdsMatches(visibleMatches);
+    setMetaAdsMatchSelection(new Set(visibleMatches.filter(match => match.canSync).map(match => match.id)));
     setMetaAdsReviewFilter('all');
     setMetaAdsSyncStats({
       source,
-      total: matches.length,
+      total: visibleMatches.length,
       available: availableCount,
       matched: matchedCount,
       alreadySynced: alreadySyncedCount,
