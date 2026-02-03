@@ -1115,10 +1115,9 @@ const extractCostSignals = (costData) => {
 
 // --- 3. MAIN COMPONENT ---
 
-export default function StitchMetaApp({ accessToken = '', embedded = false, onLogout, onPrefetchStart, onPrefetchComplete }) {
+export default function StitchMetaApp({ accessToken = '', embedded = false, onLogout }) {
   const [session, setSession] = useState({ loggedIn: false, appId: APP_ID, token: accessToken || '' });
   const hasAutoConnected = useRef(false);
-  const hasPrefetchedAll = useRef(false);
   
   // Loading States
   const [globalLoading, setGlobalLoading] = useState({ active: false, status: '', progress: 0, canSkip: false });
@@ -1157,15 +1156,10 @@ export default function StitchMetaApp({ accessToken = '', embedded = false, onLo
   const [riskFilter, setRiskFilter] = useState({ highCost: false, creativeChange: false });
   const [riskFilterDraft, setRiskFilterDraft] = useState({ highCost: false, creativeChange: false });
   const [riskFilterOpen, setRiskFilterOpen] = useState(false);
-  const [prefetchState, setPrefetchState] = useState({ active: false, completed: 0, total: 0, errors: 0 });
-  const [prefetchCache, setPrefetchCache] = useState({});
 
   useEffect(() => {
     if (!accessToken) {
       hasAutoConnected.current = false;
-      hasPrefetchedAll.current = false;
-      setPrefetchState({ active: false, completed: 0, total: 0, errors: 0 });
-      setPrefetchCache({});
       setSession({ loggedIn: false, appId: APP_ID, token: '' });
       setAccounts([]);
       setSelectedAccount(null);
@@ -1350,9 +1344,6 @@ export default function StitchMetaApp({ accessToken = '', embedded = false, onLo
     setLogs([]);
     setAuthError(null);
     hasAutoConnected.current = false;
-    hasPrefetchedAll.current = false;
-    setPrefetchState({ active: false, completed: 0, total: 0, errors: 0 });
-    setPrefetchCache({});
     if (onLogout) {
       onLogout();
     }
@@ -1366,49 +1357,6 @@ export default function StitchMetaApp({ accessToken = '', embedded = false, onLo
     hasAutoConnected.current = true;
     handleConnect();
   }, [embedded, accessToken, session.loggedIn, isConnecting, handleConnect]);
-
-  useEffect(() => {
-    if (!embedded || !session.loggedIn || !accounts.length || prefetchState.active || hasPrefetchedAll.current) {
-      return;
-    }
-
-    hasPrefetchedAll.current = true;
-    const total = accounts.length;
-    const rangeKey = buildRangeKey();
-    setPrefetchState({ active: true, completed: 0, total, errors: 0 });
-    if (onPrefetchStart) {
-      onPrefetchStart({ total });
-    }
-
-    const runPrefetch = async () => {
-      let completed = 0;
-      let errors = 0;
-      for (const account of accounts) {
-        try {
-          const result = await prefetchAccountData(account, rangeKey);
-          if (!result?.ok) {
-            errors += 1;
-          }
-        } catch {
-          errors += 1;
-        } finally {
-          completed += 1;
-          setPrefetchState(prev => ({
-            ...prev,
-            completed,
-            errors
-          }));
-        }
-      }
-
-      setPrefetchState({ active: false, completed: total, total, errors });
-      if (onPrefetchComplete) {
-        onPrefetchComplete({ total, completed: total, errors });
-      }
-    };
-
-    runPrefetch();
-  }, [accounts, buildRangeKey, embedded, onPrefetchComplete, onPrefetchStart, prefetchAccountData, prefetchState.active, session.loggedIn]);
 
   const handleExportAll = async () => {
     if (!accounts.length || isExporting) return;
@@ -1458,82 +1406,6 @@ export default function StitchMetaApp({ accessToken = '', embedded = false, onLo
     setGlobalLoading(prev => ({ ...prev, active: false }));
     // backgroundScan state remains active and updated by performRiskScan loop
   };
-
-  const buildRangeKey = useCallback(() => {
-    const customRange = customDates?.start && customDates?.end
-      ? { start: customDates.start.toISOString(), end: customDates.end.toISOString() }
-      : null;
-    return JSON.stringify({ range: dateRange, customRange });
-  }, [dateRange, customDates]);
-
-  const prefetchAccountData = useCallback(async (account, rangeKey) => {
-    const accountId = account?.id;
-    if (!accountId) return { ok: false };
-
-    const insightsParams = getRangeParams(dateRange, customDates);
-    insightsParams.fields = 'spend,impressions,cpm,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,actions,action_values,cost_per_action_type,purchase_roas';
-    insightsParams.level = 'account';
-
-    const healthCutoff = new Date();
-    healthCutoff.setDate(healthCutoff.getDate() - 30);
-
-    let activitiesSince = null;
-    let activitiesUntil = null;
-    if (dateRange.days === 'all') {
-      const past = new Date();
-      past.setFullYear(past.getFullYear() - 20);
-      activitiesSince = Math.floor(past.getTime() / 1000);
-    } else if (dateRange.days === 'custom' && customDates.start && customDates.end) {
-      activitiesSince = Math.floor(customDates.start.getTime() / 1000);
-      activitiesUntil = Math.floor(customDates.end.getTime() / 1000);
-    } else {
-      const start = new Date();
-      start.setDate(start.getDate() - (typeof dateRange.days === 'number' ? dateRange.days : 7));
-      activitiesSince = Math.floor(start.getTime() / 1000);
-    }
-
-    const logsParams = {
-      fields: 'event_time,event_type,translated_event_type,actor_name,actor_id,object_name,object_id,object_type,object_link,extra_data,application_name',
-      limit: 500
-    };
-    if (activitiesSince) logsParams.since = activitiesSince;
-    if (activitiesUntil) logsParams.until = activitiesUntil;
-
-    const [insightsResult, logsResult, healthResult, teamResult] = await Promise.allSettled([
-      callGraphAPI(`/${accountId}/insights`, insightsParams),
-      fetchChangeHistory(accountId, logsParams),
-      callGraphAPI(`/${accountId}/activities`, { fields: 'event_time,event_type', limit: 50 }),
-      fetchAccountTeam(accountId)
-    ]);
-
-    const insights = insightsResult.status === 'fulfilled' ? insightsResult.value.data?.[0] || null : null;
-    const logs = logsResult.status === 'fulfilled' ? (logsResult.value || []) : [];
-    const healthActivities = healthResult.status === 'fulfilled' ? (healthResult.value.data || []) : [];
-    const lastHealthChange = healthActivities.find(log => isSubstantiveChange(log));
-    const health = lastHealthChange && new Date(lastHealthChange.event_time) > healthCutoff
-      ? { healthy: true, lastDate: new Date(lastHealthChange.event_time).toLocaleDateString() }
-      : { healthy: false, lastDate: lastHealthChange ? new Date(lastHealthChange.event_time).toLocaleDateString() : 'None' };
-    const team = teamResult.status === 'fulfilled' ? (teamResult.value || []) : teamByAccount[accountId] || [];
-
-    setPrefetchCache(prev => ({
-      ...prev,
-      [accountId]: {
-        insights,
-        logs,
-        health,
-        team,
-        dateRangeKey: rangeKey
-      }
-    }));
-
-    return {
-      ok: true,
-      insights,
-      logs,
-      health,
-      team
-    };
-  }, [callGraphAPI, customDates, dateRange, fetchAccountTeam, fetchChangeHistory, teamByAccount]);
 
   const performRiskScan = useCallback(async () => {
     if (!accounts.length || riskScan.active) return;
@@ -1615,45 +1487,6 @@ export default function StitchMetaApp({ accessToken = '', embedded = false, onLo
   // --- DATA SYNC LOGIC (SINGLE ACCOUNT) ---
   const refreshAccountData = useCallback(async () => {
     if (!selectedAccount) return;
-
-    const rangeKey = buildRangeKey();
-    const cached = prefetchCache[selectedAccount.id];
-    if (cached && cached.dateRangeKey === rangeKey) {
-      setSelectedAccountHealth(cached.health || null);
-      setInsights(cached.insights || null);
-      setLogs(cached.logs || []);
-      if (cached.team?.length) {
-        setTeamByAccount(prev => ({ ...prev, [selectedAccount.id]: cached.team }));
-      }
-
-      const currentCounts = {};
-      (cached.logs || []).forEach(log => {
-        if (log.actor_name) {
-          const actorKey = normalizeActorKey(log.actor_name);
-          if (actorKey) {
-            currentCounts[actorKey] = (currentCounts[actorKey] || 0) + 1;
-          }
-        }
-      });
-      setUserActivityCounts(currentCounts);
-
-      const roster = cached.team?.length ? cached.team : teamByAccount[selectedAccount.id] || [];
-      let maxCount = 0;
-      let topUserKey = null;
-      Object.entries(currentCounts).forEach(([key, count]) => {
-        if (count > maxCount) {
-          maxCount = count;
-          topUserKey = key;
-        }
-      });
-      const topMember = roster.find(member => normalizeActorKey(member.activityKey || member.name) === topUserKey);
-      const fallbackMemberId = roster[0]?.id || null;
-      setMainActorId(topMember?.id || fallbackMemberId);
-
-      setHistoryLoading(false);
-      setGlobalLoading({ active: false, status: '', progress: 0, canSkip: false });
-      return;
-    }
     
     // IMMERSIVE LOADER TRIGGER (Cannot Skip individual loads)
     setGlobalLoading({ active: true, status: `Loading Data for ${selectedAccount.name}...`, progress: 0, canSkip: false });
@@ -1762,7 +1595,7 @@ export default function StitchMetaApp({ accessToken = '', embedded = false, onLo
       setHistoryLoading(false);
       setGlobalLoading({ active: false, status: '', progress: 0, canSkip: false });
     }
-  }, [selectedAccount, buildRangeKey, prefetchCache, dateRange, customDates, callGraphAPI, fetchChangeHistory, teamByAccount]);
+  }, [selectedAccount, dateRange, customDates, callGraphAPI, fetchChangeHistory, teamByAccount]);
 
   // Only trigger data refresh when Account OR Date changes (not during login)
   useEffect(() => {
