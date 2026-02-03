@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import StitchMetaApp from './StitchMetaApp';
 
-const MetaRiskEmbed = ({ accessToken, onLogout }) => {
+const MetaRiskEmbed = ({ accessToken, onLogout, onPrefetchStart, onPrefetchComplete }) => {
   const hostRef = useRef(null);
   const rootRef = useRef(null);
 
@@ -17,11 +17,17 @@ const MetaRiskEmbed = ({ accessToken, onLogout }) => {
     }
 
     rootRef.current.render(
-      <StitchMetaApp accessToken={accessToken} embedded onLogout={onLogout} />
+      <StitchMetaApp
+        accessToken={accessToken}
+        embedded
+        onLogout={onLogout}
+        onPrefetchStart={onPrefetchStart}
+        onPrefetchComplete={onPrefetchComplete}
+      />
     );
 
     return undefined;
-  }, [accessToken, onLogout]);
+  }, [accessToken, onLogout, onPrefetchStart, onPrefetchComplete]);
 
   useEffect(() => {
     return () => {

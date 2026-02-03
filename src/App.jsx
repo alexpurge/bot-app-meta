@@ -137,6 +137,8 @@ const STYLES = `
     flex: 1;
     min-height: 0;
   }
+  .meta-risk-panel.hidden { display: none; }
+  .meta-risk-panel.active { display: flex; flex: 1; min-height: 0; }
   
   /* Sidebar Elements */
   .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
@@ -155,6 +157,12 @@ const STYLES = `
   .nav-item { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; background: transparent; text-align: left; font-size: 0.95rem; color: var(--text-secondary); }
   .nav-item:hover { color: white; background-color: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.08); }
   .nav-item.active { background-color: rgba(255, 93, 0, 0.12); color: white; border-color: rgba(255, 93, 0, 0.35); box-shadow: 0 12px 22px rgba(255, 93, 0, 0.2); }
+  .nav-item.meta-risk-loading { position: relative; overflow: hidden; color: white; }
+  .nav-item.meta-risk-loading > * { position: relative; z-index: 2; }
+  .nav-item.meta-risk-loading::before { content: ''; position: absolute; inset: 0; border-radius: 0.75rem; padding: 2px; background: conic-gradient(from 0deg, rgba(255, 93, 0, 0) 0deg, #ff5d00 90deg, rgba(255, 93, 0, 0) 180deg, #ff5d00 270deg, rgba(255, 93, 0, 0) 360deg); animation: meta-risk-spin 1.1s linear infinite; z-index: 0; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+  .nav-item.meta-risk-loading::after { content: ''; position: absolute; inset: 2px; border-radius: 0.65rem; background: linear-gradient(90deg, rgba(255, 93, 0, 0) 0%, rgba(255, 93, 0, 0.35) 50%, rgba(255, 93, 0, 0) 100%); animation: meta-risk-sweep 1.8s ease-in-out infinite; z-index: 1; opacity: 0.35; }
+  @keyframes meta-risk-spin { to { transform: rotate(360deg); } }
+  @keyframes meta-risk-sweep { 0% { transform: translateX(-70%); } 100% { transform: translateX(70%); } }
   .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border-color); background-color: rgba(15, 23, 42, 0.45); }
   
   /* Import Section */
@@ -1055,6 +1063,7 @@ function App() {
   const [googleAccountInput, setGoogleAccountInput] = useState('');
   const [googleByClient, setGoogleByClient] = useState({});
   const [stripeClientSyncing, setStripeClientSyncing] = useState(false);
+  const [metaRiskPrefetch, setMetaRiskPrefetch] = useState({ status: 'idle', total: 0, completed: 0 });
 
   // Import Review State
   const [isImportReviewOpen, setIsImportReviewOpen] = useState(false);
@@ -1107,6 +1116,26 @@ function App() {
 
   const showToast = (type, title, message) => {
     setToast({ type, title, message });
+  };
+
+  const handleMetaRiskPrefetchStart = (payload = {}) => {
+    setMetaRiskPrefetch({
+      status: 'loading',
+      total: payload.total ?? 0,
+      completed: 0
+    });
+  };
+
+  const handleMetaRiskPrefetchComplete = (payload = {}) => {
+    setMetaRiskPrefetch(prev => ({
+      status: 'complete',
+      total: payload.total ?? prev.total,
+      completed: payload.completed ?? prev.total
+    }));
+    showToast('success', 'Meta Risk ready', 'All Meta Risk client data has finished loading.');
+    setTimeout(() => {
+      setMetaRiskPrefetch({ status: 'idle', total: 0, completed: 0 });
+    }, 1500);
   };
 
   const metaDateOptions = useMemo(() => ([
@@ -2623,6 +2652,7 @@ function App() {
     setGoogleTokenInput('');
     setGoogleDeveloperTokenInput(DEFAULT_GOOGLE_DEVELOPER_TOKEN);
     setGoogleLoginCustomerIdInput(DEFAULT_GOOGLE_LOGIN_CUSTOMER_ID);
+    setMetaRiskPrefetch({ status: 'idle', total: 0, completed: 0 });
   };
 
   const handleRecentActivityClick = () => {
@@ -3207,6 +3237,7 @@ function App() {
     return Array.from(rosterMap.values()).sort((a, b) => b.activityCount - a.activityCount);
   }, [selectedMetaEntry, normalizeValue]);
   const isLoggedIn = isAircallLoggedIn && isMetaLoggedIn;
+  const isMetaRiskPrefetching = metaRiskPrefetch.status === 'loading';
 
   return (
     <>
@@ -3317,7 +3348,7 @@ function App() {
             {/* New Tabs */}
             <button 
               onClick={() => setActiveTab('Meta Risk')}
-              className={`nav-item ${activeTab === 'Meta Risk' ? 'active' : ''}`}
+              className={`nav-item ${activeTab === 'Meta Risk' ? 'active' : ''} ${isMetaRiskPrefetching ? 'meta-risk-loading' : ''}`}
             >
               <ShieldAlert size={20} />
               Meta Risk
@@ -3479,9 +3510,16 @@ function App() {
           )}
 
           {/* Tab Content */}
-          {activeTab === 'Meta Risk' ? (
-            <MetaRiskEmbed accessToken={metaAccessToken} onLogout={handleLogout} />
-          ) : activeTab === 'Clients' ? (
+          <div className={`meta-risk-panel ${activeTab === 'Meta Risk' ? 'active' : 'hidden'}`}>
+            <MetaRiskEmbed
+              accessToken={metaAccessToken}
+              onLogout={handleLogout}
+              onPrefetchStart={handleMetaRiskPrefetchStart}
+              onPrefetchComplete={handleMetaRiskPrefetchComplete}
+            />
+          </div>
+
+          {activeTab !== 'Meta Risk' && (activeTab === 'Clients' ? (
             <div className="client-grid">
               {filteredClients.map((client) => {
                 const displayStatus = hasActiveStripeSubscriptions(client) ? 'Active' : client.status;
@@ -3559,7 +3597,7 @@ function App() {
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#334155', marginBottom: '0.5rem' }}>{activeTab} Dashboard</h3>
               <p>This module is currently under development.</p>
             </div>
-          )}
+          ))}
 
           {activeTab === 'Clients' && filteredClients.length === 0 && (
             <div className="empty-state">
