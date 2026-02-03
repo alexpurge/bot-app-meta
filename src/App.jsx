@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import purgeLogo from './assets/purge-logo.svg';
 import { 
   Search, 
   Plus, 
@@ -134,18 +133,12 @@ const STYLES = `
   .brand-text { display: flex; flex-direction: column; gap: 0.15rem; }
   .brand-name { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text-primary); }
   .brand-subtitle { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); }
-  .brand-logo-container { 
+  .brand-logo-image { 
     width: 40px; 
     height: 40px; 
-    display: inline-flex; 
-    align-items: center; 
-    justify-content: center; 
-    background-color: var(--logo-bg); 
-    border: none; 
-    border-radius: 8px;
-    overflow: hidden;
+    display: block; 
+    object-fit: contain; 
   }
-  .brand-logo { width: 100%; height: 100%; display: block; object-fit: contain; }
   .brand-accent { color: var(--accent-primary); }
   .nav-menu { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
   .nav-item { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; background: transparent; text-align: left; font-size: 0.95rem; color: var(--text-secondary); }
@@ -2344,9 +2337,7 @@ function App() {
         <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-header">
             <div className="brand">
-              <span className="brand-logo-container">
-                <img className="brand-logo" src={purgeLogo} alt="Purge Digital logo" />
-              </span>
+              <img className="brand-logo-image" src={META_LOGO_URL} alt="Purge Digital logo" />
               <span className="brand-text">
                 <span className="brand-name">Purge Digital</span>
                 <span className="brand-subtitle">Master Controller</span>
