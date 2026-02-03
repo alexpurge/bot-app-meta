@@ -2031,6 +2031,50 @@ function App() {
   };
 
   const normalizeMatchValue = (value) => normalizeValue(value).replace(/[^a-z0-9]/g, '');
+  const matchStopWords = new Set([
+    'the',
+    'and',
+    'co',
+    'company',
+    'inc',
+    'llc',
+    'ltd',
+    'pty',
+    'pl',
+    'group',
+    'services',
+    'service',
+    'studio',
+    'media',
+    'marketing',
+    'agency',
+    'digital',
+    'solutions',
+    'brands',
+    'brand'
+  ]);
+  const extractTokens = (value) => normalizeValue(value)
+    .split(/[^a-z0-9]+/g)
+    .filter(token => token.length > 2 && !matchStopWords.has(token));
+  const extractEmailParts = (email) => {
+    const trimmed = normalizeValue(email);
+    if (!trimmed.includes('@')) {
+      return { local: '', domain: '', localTokens: [], domainTokens: [], domainRoot: '' };
+    }
+    const [localPart, domainPart] = trimmed.split('@');
+    const domain = extractDomain(domainPart);
+    const localTokens = extractTokens(localPart.replace(/[._-]+/g, ' '));
+    const domainTokens = extractTokens(domain.replace(/[._-]+/g, ' '));
+    const domainRoot = domain.split('.')[0] || '';
+    return {
+      local: localPart,
+      domain,
+      localTokens,
+      domainTokens,
+      domainRoot
+    };
+  };
+  const countTokenOverlap = (tokensA, tokensB) => tokensA.filter(token => tokensB.includes(token)).length;
 
   const extractDomain = (value) => {
     if (!value) return '';
@@ -2041,6 +2085,10 @@ function App() {
   const findAdsClientMatch = (account, type) => {
     if (!account) return { client: null, reasons: [] };
     const accountName = normalizeMatchValue(account.name);
+    const accountNameTokens = extractTokens(account.name);
+    const accountEmailParts = extractEmailParts(account.billingEmail);
+    const accountWebsiteDomain = extractDomain(account.website);
+    const accountWebsiteTokens = extractTokens(accountWebsiteDomain);
     const billingDomain = extractDomain(account.billingEmail);
     const websiteDomain = extractDomain(account.website);
 
@@ -2051,14 +2099,31 @@ function App() {
     clients.forEach(client => {
       const clientName = normalizeMatchValue(client.businessName);
       const clientContact = normalizeMatchValue(client.contactName);
+      const clientNameTokens = extractTokens(client.businessName);
+      const clientContactTokens = extractTokens(client.contactName);
+      const clientEmailParts = extractEmailParts(client.email);
       const clientEmailDomain = extractDomain(client.email);
       const clientWebsiteDomain = extractDomain(client.website);
+      const clientWebsiteTokens = extractTokens(clientWebsiteDomain);
       let score = 0;
       const reasons = [];
 
       if (clientName && (accountName.includes(clientName) || clientName.includes(accountName))) {
         score += 3;
         reasons.push('Business name');
+      }
+      const nameTokenOverlap = countTokenOverlap(accountNameTokens, clientNameTokens);
+      if (nameTokenOverlap >= 2) {
+        score += 3;
+        reasons.push('Business name overlap');
+      } else if (nameTokenOverlap === 1) {
+        score += 1;
+        reasons.push('Business name keyword');
+      }
+      const contactTokenOverlap = countTokenOverlap(accountNameTokens, clientContactTokens);
+      if (contactTokenOverlap >= 1) {
+        score += 1;
+        reasons.push('Contact name');
       }
       if (clientContact && accountName.includes(clientContact)) {
         score += 1;
@@ -2071,6 +2136,39 @@ function App() {
       if (websiteDomain && (websiteDomain === clientWebsiteDomain || websiteDomain === clientEmailDomain)) {
         score += 2;
         reasons.push('Website domain');
+      }
+      if (accountEmailParts.domain && (accountEmailParts.domain === clientEmailParts.domain || accountEmailParts.domain === clientWebsiteDomain)) {
+        score += 2;
+        reasons.push('Email domain');
+      }
+      const emailLocalOverlap = countTokenOverlap(accountEmailParts.localTokens, clientNameTokens);
+      if (emailLocalOverlap >= 1) {
+        score += 2;
+        reasons.push('Email name');
+      }
+      const emailDomainOverlap = countTokenOverlap(accountEmailParts.domainTokens, clientNameTokens);
+      if (emailDomainOverlap >= 1) {
+        score += 1;
+        reasons.push('Email domain keyword');
+      }
+      if (accountEmailParts.domainRoot && clientNameTokens.includes(accountEmailParts.domainRoot)) {
+        score += 1;
+        reasons.push('Email domain root');
+      }
+      const websiteTokenOverlap = countTokenOverlap(accountWebsiteTokens, clientNameTokens);
+      if (websiteTokenOverlap >= 1) {
+        score += 1;
+        reasons.push('Website keyword');
+      }
+      const clientEmailNameOverlap = countTokenOverlap(clientEmailParts.localTokens, accountNameTokens);
+      if (clientEmailNameOverlap >= 1) {
+        score += 1;
+        reasons.push('Client email name');
+      }
+      const clientWebsiteOverlap = countTokenOverlap(clientWebsiteTokens, accountNameTokens);
+      if (clientWebsiteOverlap >= 1) {
+        score += 1;
+        reasons.push('Client website keyword');
       }
 
       if (score > bestScore) {
@@ -3343,6 +3441,41 @@ function App() {
   };
 
   const handleMetaAdsFinishSync = () => {
+    const pendingReviewMatches = metaAdsMatches.filter(match => match.canSync && metaAdsMatchSelection.has(match.id));
+    if (pendingReviewMatches.length) {
+      const updatedClients = clients.map(client => {
+        const match = pendingReviewMatches.find(selected => selected.client?.id === client.id);
+        if (!match) return client;
+        return mergeAdsAccountIntoClient(client, match.account, 'meta');
+      });
+      setClients(updatedClients);
+      if (selectedClient) {
+        const refreshedClient = updatedClients.find(client => client.id === selectedClient.id);
+        if (refreshedClient) {
+          setSelectedClient(refreshedClient);
+        }
+      }
+      setMetaByClient(prev => {
+        const next = { ...prev };
+        pendingReviewMatches.forEach(match => {
+          if (!match.client) return;
+          next[match.client.id] = {
+            accountId: match.account.id,
+            status: 'success',
+            error: null,
+            logs: [],
+            source: 'meta-sync',
+            data: {
+              overview: match.account.overview,
+              metrics: match.account.metrics,
+              team: match.account.team,
+              changeHistory: match.account.changeHistory
+            }
+          };
+        });
+        return next;
+      });
+    }
     if (metaAdsMergeSelection.accountId && metaAdsMergeSelection.clientId) {
       handleMetaAdsManualMerge();
     }
