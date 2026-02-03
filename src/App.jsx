@@ -1130,7 +1130,6 @@ function App() {
   const [clientDetailTab, setClientDetailTab] = useState('overview');
   const [clientActivityTab, setClientActivityTab] = useState('contact');
   const [clientMetaTab, setClientMetaTab] = useState('overview');
-  const [metaAccountInput, setMetaAccountInput] = useState('');
   const [metaDateRange, setMetaDateRange] = useState({ label: '30 Days', days: 30 });
   const [metaByClient, setMetaByClient] = useState({});
   const [clientGoogleTab, setClientGoogleTab] = useState('overview');
@@ -1264,7 +1263,6 @@ function App() {
       setClientMetaTab('overview');
       setClientGoogleTab('overview');
       const storedMeta = metaByClient[selectedClient.id];
-      setMetaAccountInput(storedMeta?.accountId || selectedClient.metaAccountId || '');
       const storedGoogle = googleByClient[selectedClient.id];
       setGoogleAccountInput(storedGoogle?.accountId || selectedClient.googleAccountId || '');
     }
@@ -1378,17 +1376,6 @@ function App() {
     ];
   };
 
-  const normalizeMetaError = (error) => {
-    if (!error) return 'Unknown error';
-    if (typeof error === 'string') return error;
-    if (error.message) return error.message;
-    try {
-      return JSON.stringify(error, null, 2);
-    } catch {
-      return String(error);
-    }
-  };
-
   const normalizeGoogleError = (error) => {
     if (!error) return 'Unknown error';
     if (typeof error === 'string') return error;
@@ -1399,57 +1386,6 @@ function App() {
     } catch {
       return String(error);
     }
-  };
-
-  const buildClientMetaSnapshot = (client) => {
-    if (!client) return null;
-    const overview = client.metaOverview
-      || client.metaRiskOverview
-      || client.metaRisk?.overview
-      || client.overview
-      || null;
-    const metrics = client.metaMetrics
-      || client.metaRiskMetrics
-      || client.metaRisk?.metrics
-      || client.metrics
-      || client.performance
-      || null;
-    const team = Array.isArray(client.metaTeam)
-      ? client.metaTeam
-      : Array.isArray(client.metaRiskTeam)
-        ? client.metaRiskTeam
-        : Array.isArray(client.metaRisk?.team)
-          ? client.metaRisk.team
-          : Array.isArray(client.teamRoster)
-            ? client.teamRoster
-            : Array.isArray(client.team)
-              ? client.team
-              : [];
-    const changeHistory = Array.isArray(client.metaChangeHistory)
-      ? client.metaChangeHistory
-      : Array.isArray(client.metaRiskChangeHistory)
-        ? client.metaRiskChangeHistory
-        : Array.isArray(client.metaRisk?.changeHistory)
-          ? client.metaRisk.changeHistory
-          : Array.isArray(client.changeHistory)
-            ? client.changeHistory
-            : [];
-    if (!overview && !metrics && team.length === 0 && changeHistory.length === 0) return null;
-    const source = client.metaRiskOverview
-      || client.metaRiskMetrics
-      || client.metaRiskTeam
-      || client.metaRiskChangeHistory
-      || client.metaRisk
-      || client.teamRoster
-      ? 'meta-risk'
-      : 'client';
-    return {
-      overview,
-      metrics,
-      team,
-      changeHistory,
-      source
-    };
   };
 
   const buildClientGoogleSnapshot = (client) => {
@@ -2744,19 +2680,6 @@ function App() {
     && client.stripeSubscriptions.some(subscription => subscription.status === 'active')
   );
 
-  const handleMetaClientSync = () => {
-    if (!selectedClient) {
-      showToast('error', 'Select a client', 'Open a client to sync Meta data.');
-      return;
-    }
-    const accountId = metaAccountInput.trim() || selectedClient.metaAccountId?.toString().trim() || '';
-    if (!accountId) {
-      showToast('error', 'Meta account ID required', 'Add a Meta Ads account ID to sync this client.');
-      return;
-    }
-    handleMetaLookup(null, accountId);
-  };
-
   const handleGoogleClientSync = () => {
     if (!selectedClient) {
       showToast('error', 'Select a client', 'Open a client to sync Google Ads data.');
@@ -3709,76 +3632,6 @@ function App() {
     }
   };
 
-  const handleMetaLookup = async (event, overrideAccountId) => {
-    if (event?.preventDefault) {
-      event.preventDefault();
-    }
-    if (!selectedClient) return;
-    const accountId = (overrideAccountId ?? metaAccountInput).trim();
-    if (!accountId) {
-      showToast('error', 'Meta account ID required', 'Enter a Meta Ads account ID to continue.');
-      return;
-    }
-    if (accountId !== metaAccountInput) {
-      setMetaAccountInput(accountId);
-    }
-
-    setMetaByClient(prev => ({
-      ...prev,
-      [selectedClient.id]: {
-        ...(prev[selectedClient.id] || {}),
-        accountId,
-        status: 'loading',
-        error: null,
-        logs: [],
-        source: null,
-        data: null
-      }
-    }));
-
-    const clientSnapshot = buildClientMetaSnapshot(selectedClient);
-    if (clientSnapshot) {
-      const missingFields = [];
-      if (!clientSnapshot.overview) missingFields.push('overview');
-      if (!clientSnapshot.metrics) missingFields.push('metrics');
-      if (!clientSnapshot.team?.length) missingFields.push('team');
-      if (!clientSnapshot.changeHistory?.length) missingFields.push('changeHistory');
-      const isComplete = missingFields.length === 0;
-      setMetaByClient(prev => ({
-        ...prev,
-        [selectedClient.id]: {
-          ...(prev[selectedClient.id] || {}),
-          accountId,
-          status: isComplete ? 'success' : 'error',
-          error: isComplete ? null : 'Meta data is incomplete. See logs below.',
-          logs: isComplete ? [] : [
-            `Missing required fields: ${missingFields.join(', ')}`,
-            'Meta lookup now only uses the data already loaded from the Meta Risk page.'
-          ],
-          source: clientSnapshot.source || 'client',
-          data: clientSnapshot
-        }
-      }));
-      return;
-    }
-
-    setMetaByClient(prev => ({
-      ...prev,
-      [selectedClient.id]: {
-        ...(prev[selectedClient.id] || {}),
-        accountId,
-        status: 'error',
-        error: 'No Meta Risk data is loaded for this client.',
-        logs: [
-          'Meta lookup only reads data already loaded in the Meta Risk page for this client ID.',
-          'Open the Meta Risk page and load the account there first.'
-        ],
-        source: 'client',
-        data: null
-      }
-    }));
-  };
-
   const handleGoogleLookup = async (event, overrideAccountId) => {
     if (event?.preventDefault) {
       event.preventDefault();
@@ -4572,10 +4425,7 @@ function App() {
     : [];
   const selectedMetaEntry = selectedClient ? metaByClient[selectedClient.id] : null;
   const selectedGoogleEntry = selectedClient ? googleByClient[selectedClient.id] : null;
-  const resolvedMetaAccountId = metaAccountInput.trim() || selectedClient?.metaAccountId?.toString().trim() || '';
   const resolvedGoogleAccountId = googleAccountInput.trim() || selectedClient?.googleAccountId?.toString().trim() || '';
-  const isMetaLinked = Boolean(selectedMetaEntry?.data);
-  const metaAccountDisplayValue = resolvedMetaAccountId || selectedMetaEntry?.data?.overview?.id || '';
   const metaTeamRoster = useMemo(() => {
     const changeHistory = selectedMetaEntry?.data?.changeHistory || [];
     const teamRoster = Array.isArray(selectedMetaEntry?.data?.team) ? selectedMetaEntry.data.team : [];
@@ -6626,14 +6476,6 @@ function App() {
                           Edit Client
                         </button>
                         <button
-                          onClick={handleMetaClientSync}
-                          className="btn-sync"
-                          disabled={selectedMetaEntry?.status === 'loading' || !resolvedMetaAccountId}
-                        >
-                          <RefreshCw size={18} />
-                          {selectedMetaEntry?.status === 'loading' ? 'Syncing Meta...' : 'Sync with Meta'}
-                        </button>
-                        <button
                           onClick={handleGoogleClientSync}
                           className="btn-sync"
                           disabled={selectedGoogleEntry?.status === 'loading' || !resolvedGoogleAccountId}
@@ -6896,56 +6738,23 @@ function App() {
                   {clientDetailTab === 'meta' && (
                     <div>
                       <div className="meta-header">
-                        <div className={`meta-lookup ${selectedMetaEntry?.data ? 'compact' : ''}`}>
+                        <div className="meta-lookup compact">
                           <div className="meta-lookup-title-row">
                             <div>
-                              <h3 className="meta-lookup-title">Meta Ads Account ID</h3>
-                              {!selectedMetaEntry?.data && (
-                                <p className="meta-lookup-helper">
-                                  Load the Meta Ads account to review metrics, team activity, and change history.
-                                </p>
-                              )}
+                              <h3 className="meta-lookup-title">Meta Ads Snapshot</h3>
+                              <p className="meta-lookup-helper">
+                                Meta Ads data is populated from the global sync.
+                              </p>
                             </div>
+                            {selectedMetaEntry?.data?.overview?.id && (
+                              <span className="meta-source-pill">
+                                Account ID: {selectedMetaEntry.data.overview.id}
+                              </span>
+                            )}
                             {selectedMetaEntry?.source && (
                               <span className="meta-source-pill">Source: {selectedMetaEntry.source}</span>
                             )}
                           </div>
-
-                          <div className="meta-lookup-form">
-                            <div>
-                              <input
-                                id="metaAccountIdInput"
-                                className="form-input meta-input"
-                                value={metaAccountDisplayValue}
-                                onChange={(event) => {
-                                  if (isMetaLinked) return;
-                                  setMetaAccountInput(event.target.value);
-                                }}
-                                placeholder="Enter Meta Ads account ID"
-                                disabled={isMetaLinked}
-                              />
-                            </div>
-                            {!isMetaLinked && (
-                              <button className="btn-primary meta-submit" type="button" onClick={handleMetaLookup} disabled={selectedMetaEntry?.status === 'loading'}>
-                                {selectedMetaEntry?.status === 'loading' ? 'Loading...' : 'Load Meta'}
-                              </button>
-                            )}
-                            {isMetaLinked && (
-                              <span className="meta-source-pill">Linked via Meta Ads sync</span>
-                            )}
-                          </div>
-
-                          {selectedMetaEntry?.status === 'error' && selectedMetaEntry?.error && (
-                            <div className="meta-error">
-                              <strong>Error:</strong> {selectedMetaEntry.error}
-                            </div>
-                          )}
-
-                          {selectedMetaEntry?.logs?.length > 0 && (
-                            <div className="meta-log">
-                              {selectedMetaEntry.logs.join('\n')}
-                            </div>
-                          )}
                         </div>
 
                         <div>
@@ -7008,7 +6817,7 @@ function App() {
 
                       {!selectedMetaEntry?.data && (
                         <div className="service-empty">
-                          Add a Meta Ads account ID to load the risk snapshot for this client.
+                          Run the Meta Ads Sync to load this client&apos;s Meta snapshot.
                         </div>
                       )}
 
