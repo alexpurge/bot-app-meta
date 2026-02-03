@@ -24,6 +24,7 @@ import {
   Save,
   LogOut,
   FileSpreadsheet,
+  FileText,
   Table,
   ShieldAlert,
   ShieldCheck,
@@ -233,6 +234,25 @@ const STYLES = `
   .additional-add-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; border: 1px dashed rgba(148, 163, 184, 0.5); background-color: rgba(15, 23, 42, 0.5); color: var(--text-secondary); font-weight: 600; cursor: pointer; }
   .additional-add-btn:hover { border-color: rgba(255, 93, 0, 0.5); color: var(--accent-primary); background-color: rgba(255, 93, 0, 0.1); }
   .additional-select { min-width: 160px; height: 2.5rem; padding: 0.5rem 2.25rem 0.5rem 0.75rem; font-size: 0.9rem; }
+  .custom-info-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .custom-info-box { align-items: flex-start; }
+  .custom-info-content { display: flex; flex-direction: column; gap: 0.15rem; }
+  .custom-info-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+  .custom-info-value { font-weight: 600; color: var(--text-primary); }
+  .custom-editor-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .custom-info-editor { display: flex; flex-direction: column; gap: 0.5rem; }
+  .custom-info-row { display: grid; grid-template-columns: 160px 1fr 1fr auto; gap: 0.5rem; align-items: center; }
+  .custom-section-list { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .custom-section-editor { margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+  .custom-section-row { background: rgba(15, 23, 42, 0.45); border: 1px dashed rgba(255, 255, 255, 0.08); padding: 0.75rem; border-radius: 0.75rem; }
+  .custom-section-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .custom-content-box { border-style: dashed; }
+  .icon-btn { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.12); color: var(--text-secondary); border-radius: 0.5rem; padding: 0.35rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .icon-btn:hover { color: var(--accent-primary); border-color: rgba(255, 93, 0, 0.4); }
+  @media (max-width: 640px) {
+    .custom-info-row { grid-template-columns: 1fr; }
+    .custom-section-header { flex-direction: column; align-items: stretch; }
+  }
   .card-footer { padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center; }
   .service-tag { font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); }
   .view-link { color: var(--accent-primary); font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; border: none; background: none; cursor: pointer; transition: transform 0.2s; }
@@ -1004,7 +1024,9 @@ function App() {
   const [stripeSyncStats, setStripeSyncStats] = useState({
     source: '',
     total: 0,
+    available: 0,
     matched: 0,
+    alreadySynced: 0,
     unmatched: 0
   });
   
@@ -1055,6 +1077,106 @@ function App() {
   const [googleAccountInput, setGoogleAccountInput] = useState('');
   const [googleByClient, setGoogleByClient] = useState({});
   const [stripeClientSyncing, setStripeClientSyncing] = useState(false);
+  const overviewIconOptions = useMemo(() => ([
+    { value: 'note', label: 'Note', icon: FileText },
+    { value: 'user', label: 'User', icon: User },
+    { value: 'phone', label: 'Phone', icon: Phone },
+    { value: 'mail', label: 'Email', icon: Mail },
+    { value: 'map', label: 'Location', icon: MapPin },
+    { value: 'globe', label: 'Website', icon: Globe },
+    { value: 'target', label: 'Target', icon: Target },
+    { value: 'briefcase', label: 'Service', icon: Briefcase },
+    { value: 'dollar', label: 'Budget', icon: DollarSign },
+    { value: 'star', label: 'Priority', icon: Star },
+    { value: 'activity', label: 'Activity', icon: Activity },
+    { value: 'database', label: 'Database', icon: Database },
+    { value: 'calendar', label: 'Calendar', icon: Calendar }
+  ]), []);
+  const overviewIconMap = useMemo(() => overviewIconOptions.reduce((acc, option) => {
+    acc[option.value] = option.icon;
+    return acc;
+  }, {}), [overviewIconOptions]);
+
+  const normalizeOverviewExtras = (client) => {
+    const extras = client?.overviewExtras ?? {};
+    return {
+      infoItems: Array.isArray(extras.infoItems) ? extras.infoItems : [],
+      sections: Array.isArray(extras.sections) ? extras.sections : []
+    };
+  };
+
+  const updateOverviewExtras = (updater) => {
+    setEditingClient(prev => {
+      if (!prev) return prev;
+      const nextExtras = updater(normalizeOverviewExtras(prev));
+      return {
+        ...prev,
+        overviewExtras: nextExtras
+      };
+    });
+  };
+
+  const addOverviewInfoItem = () => {
+    updateOverviewExtras(extras => ({
+      ...extras,
+      infoItems: [
+        ...extras.infoItems,
+        {
+          id: `info-${Date.now()}`,
+          label: '',
+          value: '',
+          icon: 'note'
+        }
+      ]
+    }));
+  };
+
+  const updateOverviewInfoItem = (id, field, value) => {
+    updateOverviewExtras(extras => ({
+      ...extras,
+      infoItems: extras.infoItems.map(item => (
+        item.id === id ? { ...item, [field]: value } : item
+      ))
+    }));
+  };
+
+  const removeOverviewInfoItem = (id) => {
+    updateOverviewExtras(extras => ({
+      ...extras,
+      infoItems: extras.infoItems.filter(item => item.id !== id)
+    }));
+  };
+
+  const addOverviewSection = () => {
+    updateOverviewExtras(extras => ({
+      ...extras,
+      sections: [
+        ...extras.sections,
+        {
+          id: `section-${Date.now()}`,
+          title: '',
+          content: '',
+          icon: 'note'
+        }
+      ]
+    }));
+  };
+
+  const updateOverviewSection = (id, field, value) => {
+    updateOverviewExtras(extras => ({
+      ...extras,
+      sections: extras.sections.map(section => (
+        section.id === id ? { ...section, [field]: value } : section
+      ))
+    }));
+  };
+
+  const removeOverviewSection = (id) => {
+    updateOverviewExtras(extras => ({
+      ...extras,
+      sections: extras.sections.filter(section => section.id !== id)
+    }));
+  };
 
   // Import Review State
   const [isImportReviewOpen, setIsImportReviewOpen] = useState(false);
@@ -1851,19 +1973,33 @@ function App() {
     return { client: bestMatch, reasons: bestReasons };
   };
 
-  const buildStripeMatches = (stripeCustomers) => stripeCustomers.map(customer => {
-    const { client, reasons } = findStripeClientMatch(customer);
-    const canSync = Boolean(client);
-    const confidence = reasons.length >= 2 ? 'High confidence' : reasons.length === 1 ? 'Likely match' : 'No match';
-    return {
-      id: `${customer.id}-${client?.id || 'unmatched'}`,
-      client,
-      stripeCustomer: customer,
-      matchReasons: reasons,
-      confidence,
-      canSync
-    };
-  });
+  const buildStripeMatches = (stripeCustomers) => {
+    const existingStripeCustomerIds = new Set(
+      clients.map(client => client.stripeProfile?.customerId).filter(Boolean)
+    );
+    return stripeCustomers.map(customer => {
+      const { client, reasons } = findStripeClientMatch(customer);
+      const alreadySynced = existingStripeCustomerIds.has(customer.id);
+      const canSync = Boolean(client) && !alreadySynced;
+      const confidence = alreadySynced
+        ? 'Already synced'
+        : reasons.length >= 2
+          ? 'High confidence'
+          : reasons.length === 1
+            ? 'Likely match'
+            : 'No match';
+      const matchReasons = alreadySynced ? ['Stripe ID'] : reasons;
+      return {
+        id: `${customer.id}-${client?.id || 'unmatched'}`,
+        client,
+        stripeCustomer: customer,
+        matchReasons,
+        confidence,
+        canSync,
+        alreadySynced
+      };
+    });
+  };
 
   const mergeStripeCustomerIntoClient = (client, stripeCustomer, options = {}) => {
     const existingSubscriptions = Array.isArray(client.stripeSubscriptions) ? client.stripeSubscriptions : [];
@@ -1974,14 +2110,18 @@ function App() {
     setStripeSyncStage('loading');
     const { customers, source, warning } = await fetchStripeCustomers(apiKey.trim());
     const matches = buildStripeMatches(customers);
-    const matchedCount = matches.filter(match => match.canSync).length;
-    const unmatchedCount = matches.length - matchedCount;
+    const availableCount = matches.filter(match => match.canSync).length;
+    const matchedCount = matches.filter(match => match.client).length;
+    const alreadySyncedCount = matches.filter(match => match.alreadySynced).length;
+    const unmatchedCount = matches.filter(match => !match.client).length;
     setStripeMatches(matches);
     setStripeMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
     setStripeSyncStats({
       source,
       total: matches.length,
+      available: availableCount,
       matched: matchedCount,
+      alreadySynced: alreadySyncedCount,
       unmatched: unmatchedCount
     });
     setStripeSyncStage('review');
@@ -3168,7 +3308,10 @@ function App() {
 
   // --- Edit Logic ---
   const startEditing = () => {
-    setEditingClient({ ...selectedClient });
+    setEditingClient({
+      ...selectedClient,
+      overviewExtras: normalizeOverviewExtras(selectedClient)
+    });
     setIsEditing(true);
     setIsDeleteConfirmOpen(false); // reset delete state just in case
   };
@@ -3218,6 +3361,9 @@ function App() {
       hasRisk: false,
       lastUpdated: null
     };
+  const overviewExtras = selectedClient ? normalizeOverviewExtras(selectedClient) : { infoItems: [], sections: [] };
+  const displayOverviewInfoItems = overviewExtras.infoItems.filter(item => item.label || item.value);
+  const displayOverviewSections = overviewExtras.sections.filter(section => section.title || section.content);
   const selectedSubscriptions = selectedClient?.stripeSubscriptions || [];
   const selectedStripeProfile = selectedClient?.stripeProfile || null;
   const selectedSentEmails = selectedClient ? buildSentEmailActivity(selectedClient) : [];
@@ -3683,7 +3829,8 @@ function App() {
                       {stripeSyncStats.source ? ` · Source: ${stripeSyncStats.source}` : ''}.
                     </p>
                     <div className="stripe-customer-badges" style={{ marginTop: '0.5rem' }}>
-                      <span className="stripe-summary-pill">{stripeSyncStats.matched} matched</span>
+                      <span className="stripe-summary-pill">{stripeSyncStats.available} available to sync</span>
+                      <span className="stripe-summary-pill">{stripeSyncStats.alreadySynced} already synced</span>
                       <span className="stripe-summary-pill">{stripeSyncStats.unmatched} unmatched</span>
                     </div>
                   </div>
@@ -4361,21 +4508,74 @@ function App() {
 
                       <div className="additional-section">
                         <h3 className="section-label">Additional</h3>
-                        <div className="additional-controls">
-                          <button type="button" className="additional-add-btn">
-                            <Plus size={16} />
-                            Add details
-                          </button>
-                          <div className="custom-select-wrapper">
-                            <select className="custom-select additional-select" defaultValue="">
-                              <option value="">Select icon</option>
-                              <option value="note">Note</option>
-                              <option value="link">Link</option>
-                              <option value="flag">Flag</option>
-                            </select>
-                            <ChevronDown className="custom-select-arrow" size={16} />
-                          </div>
-                        </div>
+                        {!isEditing ? (
+                          displayOverviewInfoItems.length > 0 ? (
+                            <div className="custom-info-list">
+                              {displayOverviewInfoItems.map(item => {
+                                const Icon = overviewIconMap[item.icon] || FileText;
+                                return (
+                                  <div key={item.id} className="info-box custom-info-box">
+                                    <Icon className="info-icon" />
+                                    <div className="custom-info-content">
+                                      <span className="custom-info-label">{item.label || 'Detail'}</span>
+                                      <span className="custom-info-value">{item.value || '—'}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="activity-empty">No additional details added yet.</div>
+                          )
+                        ) : (
+                          <>
+                            <div className="custom-editor-actions">
+                              <button type="button" className="additional-add-btn" onClick={addOverviewInfoItem}>
+                                <Plus size={16} />
+                                Add info box
+                              </button>
+                              <button type="button" className="additional-add-btn" onClick={addOverviewSection}>
+                                <Plus size={16} />
+                                Add section
+                              </button>
+                            </div>
+                            {editingClient?.overviewExtras?.infoItems?.length > 0 && (
+                              <div className="custom-info-editor">
+                                {editingClient.overviewExtras.infoItems.map(item => (
+                                  <div key={item.id} className="custom-info-row">
+                                    <div className="custom-select-wrapper">
+                                      <select
+                                        className="custom-select additional-select"
+                                        value={item.icon || 'note'}
+                                        onChange={(event) => updateOverviewInfoItem(item.id, 'icon', event.target.value)}
+                                      >
+                                        {overviewIconOptions.map(option => (
+                                          <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
+                                      </select>
+                                      <ChevronDown className="custom-select-arrow" size={16} />
+                                    </div>
+                                    <input
+                                      className="edit-input-plain"
+                                      value={item.label}
+                                      onChange={(event) => updateOverviewInfoItem(item.id, 'label', event.target.value)}
+                                      placeholder="Label"
+                                    />
+                                    <input
+                                      className="edit-input-plain"
+                                      value={item.value}
+                                      onChange={(event) => updateOverviewInfoItem(item.id, 'value', event.target.value)}
+                                      placeholder="Value"
+                                    />
+                                    <button type="button" className="icon-btn" onClick={() => removeOverviewInfoItem(item.id)}>
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -4445,6 +4645,60 @@ function App() {
                           </>
                         )}
                       </div>
+                      {!isEditing && displayOverviewSections.length > 0 && (
+                        <div className="custom-section-list">
+                          {displayOverviewSections.map(section => {
+                            const Icon = overviewIconMap[section.icon] || FileText;
+                            return (
+                              <div key={section.id} className="content-box custom-content-box">
+                                <div className="box-header">
+                                  <Icon size={18} className="info-icon" />
+                                  {section.title || 'Section'}
+                                </div>
+                                <p className="box-text">{section.content || '—'}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {isEditing && editingClient?.overviewExtras?.sections?.length > 0 && (
+                        <div className="custom-section-editor">
+                          {editingClient.overviewExtras.sections.map(section => (
+                            <div key={section.id} className="custom-section-row">
+                              <div className="custom-section-header">
+                                <div className="custom-select-wrapper">
+                                  <select
+                                    className="custom-select additional-select"
+                                    value={section.icon || 'note'}
+                                    onChange={(event) => updateOverviewSection(section.id, 'icon', event.target.value)}
+                                  >
+                                    {overviewIconOptions.map(option => (
+                                      <option key={option.value} value={option.value}>{option.label}</option>
+                                    ))}
+                                  </select>
+                                  <ChevronDown className="custom-select-arrow" size={16} />
+                                </div>
+                                <input
+                                  className="edit-input-plain"
+                                  value={section.title}
+                                  onChange={(event) => updateOverviewSection(section.id, 'title', event.target.value)}
+                                  placeholder="Section title"
+                                />
+                                <button type="button" className="icon-btn" onClick={() => removeOverviewSection(section.id)}>
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                              <textarea
+                                className="edit-textarea"
+                                rows={3}
+                                value={section.content}
+                                onChange={(event) => updateOverviewSection(section.id, 'content', event.target.value)}
+                                placeholder="Section details"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
