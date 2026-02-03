@@ -1824,36 +1824,55 @@ function App() {
     };
 
     try {
-      const customersUrl = new URL('https://api.stripe.com/v1/customers');
-      customersUrl.searchParams.set('limit', '100');
-      const subscriptionsUrl = new URL('https://api.stripe.com/v1/subscriptions');
-      subscriptionsUrl.searchParams.set('status', 'all');
-      subscriptionsUrl.searchParams.set('limit', '100');
-      subscriptionsUrl.searchParams.append('expand[]', 'data.customer');
+      const headers = {
+        Authorization: `Bearer ${apiKey}`
+      };
+      const fetchStripeList = async (baseUrl, params = {}) => {
+        const items = [];
+        let hasMore = true;
+        let startingAfter = null;
 
-      const [customersResponse, subscriptionsResponse] = await Promise.all([
-        fetch(customersUrl.toString(), {
-          headers: {
-            Authorization: `Bearer ${apiKey}`
+        while (hasMore) {
+          const url = new URL(baseUrl);
+          Object.entries(params).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+              value.forEach(entry => url.searchParams.append(key, entry));
+            } else {
+              url.searchParams.set(key, value);
+            }
+          });
+          url.searchParams.set('limit', '100');
+          if (startingAfter) {
+            url.searchParams.set('starting_after', startingAfter);
           }
-        }),
-        fetch(subscriptionsUrl.toString(), {
-          headers: {
-            Authorization: `Bearer ${apiKey}`
+
+          const response = await fetch(url.toString(), { headers });
+          if (!response.ok) {
+            throw new Error(`Stripe API error: ${response.status}`);
           }
+
+          const payload = await response.json();
+          const data = Array.isArray(payload.data) ? payload.data : [];
+          items.push(...data);
+          hasMore = Boolean(payload.has_more);
+          startingAfter = data.length > 0 ? data[data.length - 1].id : null;
+          if (hasMore && !startingAfter) {
+            hasMore = false;
+          }
+        }
+
+        return items;
+      };
+
+      const [customersPayload, subscriptionsPayload] = await Promise.all([
+        fetchStripeList('https://api.stripe.com/v1/customers'),
+        fetchStripeList('https://api.stripe.com/v1/subscriptions', {
+          status: 'all',
+          'expand[]': ['data.customer']
         })
       ]);
 
-      if (!customersResponse.ok) {
-        throw new Error(`Stripe API error: ${customersResponse.status}`);
-      }
-      if (!subscriptionsResponse.ok) {
-        throw new Error(`Stripe API error: ${subscriptionsResponse.status}`);
-      }
-
-      const customersPayload = await customersResponse.json();
-      const subscriptionsPayload = await subscriptionsResponse.json();
-      const customers = buildStripeCustomerRecords(customersPayload.data || [], subscriptionsPayload.data || []);
+      const customers = buildStripeCustomerRecords(customersPayload, subscriptionsPayload);
       return {
         customers,
         source: 'Stripe API'
