@@ -2132,11 +2132,9 @@ function App() {
         .map(value => (type === 'meta' ? normalizeMetaAccountId(value) : value.toString()))
     );
     return accounts.map(account => {
-      const { client, reasons, score, candidates } = findAdsClientMatch(account, type);
-      const alreadySynced = existingAccountIds.has(account.id);
-      const { client, reasons } = findAdsClientMatch(account, type);
       const accountId = type === 'meta' ? normalizeMetaAccountId(account.id) : account.id;
       const alreadySynced = existingAccountIds.has(accountId);
+      const { client, reasons, score, candidates } = findAdsClientMatch(account, type);
       const matchReasons = alreadySynced ? ['Account ID'] : reasons;
       return {
         id: account.id,
