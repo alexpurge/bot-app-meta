@@ -397,6 +397,7 @@ const STYLES = `
   .stripe-row-disabled .card-select-checkbox { cursor: not-allowed; }
   .stripe-row-disabled .stripe-verify { background-color: rgba(15, 23, 42, 0.6); color: var(--text-secondary); border-color: rgba(255, 255, 255, 0.1); }
   .stripe-summary-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.6rem; border-radius: 999px; background-color: rgba(148, 163, 184, 0.15); color: var(--text-secondary); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid rgba(148, 163, 184, 0.2); }
+  .stripe-summary-pill.filter-active { background-color: rgba(249, 115, 22, 0.2); color: #fdba74; border-color: rgba(249, 115, 22, 0.5); box-shadow: 0 8px 16px -12px rgba(249, 115, 22, 0.6); }
   .stripe-customer-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .stripe-subscription-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border-radius: 999px; background-color: rgba(99, 91, 255, 0.2); color: #c7d2fe; font-size: 0.7rem; font-weight: 700; border: 1px solid rgba(99, 91, 255, 0.35); }
   .stripe-no-match { color: var(--text-secondary); font-size: 0.8rem; font-style: italic; }
@@ -433,6 +434,7 @@ const STYLES = `
   .login-btn { position: relative; overflow: hidden; width: 100%; border: none; border-radius: 0.9rem; background: linear-gradient(135deg, #ff5d00 0%, #ff7a1a 100%); color: white; font-weight: 700; padding: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 18px 30px rgba(255, 93, 0, 0.35); }
   .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
   .login-btn-loading-bar { position: absolute; left: 0; bottom: 0; height: 4px; background-color: rgba(255, 255, 255, 0.75); animation: loadingSlide 1s infinite linear; }
+  .sync-spinner { display: inline-flex; align-items: center; justify-content: center; width: 1rem; height: 1rem; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff; animation: spin 0.9s linear infinite; }
 
   /* Global Loading Bar */
   .global-loading { position: sticky; top: 0; z-index: 30; background-color: rgba(15, 23, 42, 0.8); border-radius: 999px; overflow: hidden; height: 6px; margin-bottom: 1rem; border: 1px solid rgba(255, 255, 255, 0.08); }
@@ -671,6 +673,7 @@ const STYLES = `
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes loadingSlide { 0% { width: 0; } 100% { width: 100%; } }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
   @keyframes slideInRight { from { transform: translateX(12px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 `;
 
@@ -1070,6 +1073,7 @@ function App() {
   const [metaAdsSyncStage, setMetaAdsSyncStage] = useState('review');
   const [metaAdsMatches, setMetaAdsMatches] = useState([]);
   const [metaAdsMatchSelection, setMetaAdsMatchSelection] = useState(new Set());
+  const [metaAdsReviewFilter, setMetaAdsReviewFilter] = useState('all');
   const [metaAdsMergeSelection, setMetaAdsMergeSelection] = useState({
     accountId: '',
     clientId: ''
@@ -1084,6 +1088,7 @@ function App() {
     alreadySynced: 0,
     unmatched: 0
   });
+  const [isMetaAdsFinishing, setIsMetaAdsFinishing] = useState(false);
   
   // Navigation State
   const [activeTab, setActiveTab] = useState('Clients');
@@ -2776,6 +2781,17 @@ function App() {
     }
   };
 
+  const handleMetaAdsReviewFilter = (filter) => {
+    setMetaAdsReviewFilter((current) => (current === filter ? 'all' : filter));
+  };
+
+  const handleMetaAdsReviewFilterKeyDown = (event, filter) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleMetaAdsReviewFilter(filter);
+    }
+  };
+
   const openStripeSync = () => {
     if (!stripeApiKey.trim()) {
       showToast('error', 'Stripe key required', 'Add your Stripe API key on the login screen to sync Stripe data.');
@@ -3243,6 +3259,7 @@ function App() {
     setMetaAdsMergeSelection({ accountId: '', clientId: '' });
     setMetaAdsAccountSearch('');
     setMetaAdsClientSearch('');
+    setMetaAdsReviewFilter('all');
     setMetaAdsSyncStage('loading');
     setIsMetaAdsSyncOpen(true);
     void prepareMetaAdsSync();
@@ -3251,6 +3268,7 @@ function App() {
   const closeMetaAdsSync = () => {
     setIsMetaAdsSyncOpen(false);
     setMetaAdsSyncStage('review');
+    setMetaAdsReviewFilter('all');
   };
 
   const prepareMetaAdsSync = async () => {
@@ -3263,6 +3281,7 @@ function App() {
     const unmatchedCount = matches.filter(match => !match.client).length;
     setMetaAdsMatches(matches);
     setMetaAdsMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
+    setMetaAdsReviewFilter('all');
     setMetaAdsSyncStats({
       source,
       total: matches.length,
@@ -3367,6 +3386,19 @@ function App() {
 
   const metaAdsUnmatchedAccounts = metaAdsMatches.filter(match => !match.client);
   const metaAdsUnmatchedClients = clients.filter(client => !client.metaAccountId);
+  const filteredMetaAdsMatches = metaAdsMatches.filter((match) => {
+    if (metaAdsReviewFilter === 'available') {
+      return match.canSync;
+    }
+    if (metaAdsReviewFilter === 'synced') {
+      return match.alreadySynced;
+    }
+    if (metaAdsReviewFilter === 'unmatched') {
+      return !match.client;
+    }
+    return true;
+  });
+  const pendingMetaAdsReviewMatches = metaAdsMatches.filter(match => match.canSync && metaAdsMatchSelection.has(match.id));
 
   const normalizedMetaAdsAccountSearch = metaAdsAccountSearch.trim().toLowerCase();
   const normalizedMetaAdsClientSearch = metaAdsClientSearch.trim().toLowerCase();
@@ -3442,6 +3474,7 @@ function App() {
 
   const handleMetaAdsFinishSync = () => {
     const pendingReviewMatches = metaAdsMatches.filter(match => match.canSync && metaAdsMatchSelection.has(match.id));
+    setIsMetaAdsFinishing(true);
     if (pendingReviewMatches.length) {
       const updatedClients = clients.map(client => {
         const match = pendingReviewMatches.find(selected => selected.client?.id === client.id);
@@ -3479,7 +3512,10 @@ function App() {
     if (metaAdsMergeSelection.accountId && metaAdsMergeSelection.clientId) {
       handleMetaAdsManualMerge();
     }
-    setMetaAdsSyncStage('complete');
+    setTimeout(() => {
+      setMetaAdsSyncStage('complete');
+      setIsMetaAdsFinishing(false);
+    }, 500);
   };
 
   const buildAircallAuthHeader = (tokenOverride, appIdOverride) => {
@@ -5683,9 +5719,33 @@ function App() {
                       {metaAdsSyncStats.source ? ` · Source: ${metaAdsSyncStats.source}` : ''}.
                     </p>
                     <div className="stripe-customer-badges" style={{ marginTop: '0.5rem' }}>
-                      <span className="stripe-summary-pill">{metaAdsSyncStats.available} available to sync</span>
-                      <span className="stripe-summary-pill">{metaAdsSyncStats.alreadySynced} already linked</span>
-                      <span className="stripe-summary-pill">{metaAdsSyncStats.unmatched} unmatched</span>
+                      <span
+                        className={`stripe-summary-pill ${metaAdsReviewFilter === 'available' ? 'filter-active' : ''}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleMetaAdsReviewFilter('available')}
+                        onKeyDown={(event) => handleMetaAdsReviewFilterKeyDown(event, 'available')}
+                      >
+                        {metaAdsSyncStats.available} available to sync
+                      </span>
+                      <span
+                        className={`stripe-summary-pill ${metaAdsReviewFilter === 'synced' ? 'filter-active' : ''}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleMetaAdsReviewFilter('synced')}
+                        onKeyDown={(event) => handleMetaAdsReviewFilterKeyDown(event, 'synced')}
+                      >
+                        {metaAdsSyncStats.alreadySynced} already linked
+                      </span>
+                      <span
+                        className={`stripe-summary-pill ${metaAdsReviewFilter === 'unmatched' ? 'filter-active' : ''}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleMetaAdsReviewFilter('unmatched')}
+                        onKeyDown={(event) => handleMetaAdsReviewFilterKeyDown(event, 'unmatched')}
+                      >
+                        {metaAdsSyncStats.unmatched} unmatched
+                      </span>
                     </div>
                   </div>
                   <div>
@@ -5706,7 +5766,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {metaAdsMatches.map((match) => {
+                      {filteredMetaAdsMatches.map((match) => {
                         const isSelected = metaAdsMatchSelection.has(match.id);
                         const spend = match.account.metrics?.spend
                           ? formatCurrency(match.account.metrics.spend, match.account.overview?.currency)
@@ -5935,9 +5995,17 @@ function App() {
                     <button
                       className="btn-primary"
                       onClick={handleMetaAdsFinishSync}
-                      disabled={!metaAdsMergeSelection.accountId || !metaAdsMergeSelection.clientId}
+                      disabled={isMetaAdsFinishing || (!metaAdsMergeSelection.accountId || !metaAdsMergeSelection.clientId) && pendingMetaAdsReviewMatches.length === 0}
                     >
-                      Sync &amp; Finish <ArrowRight size={16} />
+                      {isMetaAdsFinishing ? (
+                        <>
+                          Syncing <span className="sync-spinner" />
+                        </>
+                      ) : (
+                        <>
+                          Sync &amp; Finish <ArrowRight size={16} />
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
