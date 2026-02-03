@@ -386,6 +386,10 @@ const STYLES = `
   .login-form { display: grid; gap: 1rem; }
   .login-input { width: 100%; padding: 0.95rem 1rem; border-radius: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.12); background-color: rgba(0, 0, 0, 0.35); font-size: 1rem; color: var(--text-primary); }
   .login-input:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(255, 93, 0, 0.2); }
+  .login-textarea { width: 100%; min-height: 220px; padding: 1rem; border-radius: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.12); background-color: rgba(0, 0, 0, 0.35); font-size: 0.95rem; color: var(--text-primary); font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; line-height: 1.6; resize: vertical; }
+  .login-textarea:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(255, 93, 0, 0.2); }
+  .login-instructions { font-size: 0.9rem; color: var(--text-secondary); margin: 0; }
+  .login-format { margin: 0.35rem 0 0; padding: 0.75rem 1rem; border-radius: 0.75rem; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; white-space: pre-line; }
   .login-helper { font-size: 0.85rem; color: var(--text-muted); }
   .login-card .form-label { color: var(--text-secondary); }
   .login-btn { position: relative; overflow: hidden; width: 100%; border: none; border-radius: 0.9rem; background: linear-gradient(135deg, #ff5d00 0%, #ff7a1a 100%); color: white; font-weight: 700; padding: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 18px 30px rgba(255, 93, 0, 0.35); }
@@ -636,6 +640,7 @@ const AIRCALL_APP_ID = '827d006737dd9e69aaa89d6300a1a9f8';
 const AIRCALL_BASE_URL = 'https://api.aircall.io/v1';
 const AIRCALL_TEAM_NAME = 'Account Management';
 const META_ACCESS_TOKEN_KEY = 'metaAccessToken';
+const STRIPE_API_KEY_KEY = 'stripeApiKey';
 const META_GRAPH_VERSION = 'v19.0';
 const META_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 const META_LOGO_URL = 'https://i.imgur.com/QjjDjuU.png';
@@ -986,8 +991,8 @@ function App() {
   const [bulkActionType, setBulkActionType] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isStripeSyncOpen, setIsStripeSyncOpen] = useState(false);
-  const [stripeApiKey, setStripeApiKey] = useState('');
-  const [stripeSyncStage, setStripeSyncStage] = useState('connect');
+  const [stripeApiKey, setStripeApiKey] = useState(() => localStorage.getItem(STRIPE_API_KEY_KEY) || '');
+  const [stripeSyncStage, setStripeSyncStage] = useState('review');
   const [stripeMatches, setStripeMatches] = useState([]);
   const [stripeMatchSelection, setStripeMatchSelection] = useState(new Set());
   const [stripeMergeSelection, setStripeMergeSelection] = useState({
@@ -1016,6 +1021,7 @@ function App() {
   // Aircall Auth & Activity
   const [aircallToken, setAircallToken] = useState(() => localStorage.getItem('aircallToken') || '');
   const [aircallAppId, setAircallAppId] = useState(() => localStorage.getItem('aircallAppId') || AIRCALL_APP_ID);
+  const [loginCredentialsInput, setLoginCredentialsInput] = useState('');
   const [aircallTokenInput, setAircallTokenInput] = useState('');
   const [aircallAppIdInput, setAircallAppIdInput] = useState(() => localStorage.getItem('aircallAppId') || AIRCALL_APP_ID);
   const [isAircallLoggedIn, setIsAircallLoggedIn] = useState(() => Boolean(localStorage.getItem('aircallToken')));
@@ -1949,37 +1955,37 @@ function App() {
   );
 
   const openStripeSync = () => {
-    setStripeApiKey('');
-    setStripeMatches([]);
-    setStripeMatchSelection(new Set());
+    if (!stripeApiKey.trim()) {
+      showToast('error', 'Stripe key required', 'Add your Stripe API key on the login screen to sync Stripe data.');
+      return;
+    }
+    if (stripeMatches.length === 0) {
+      showToast('error', 'Stripe sync not initialized', 'Initialize the workspace to pull Stripe customers before syncing.');
+      return;
+    }
+    setStripeMatchSelection(new Set(stripeMatches.filter(match => match.canSync).map(match => match.id)));
     setStripeMergeSelection({
       stripeCustomerId: '',
       clientId: ''
     });
     setStripeCustomerMergeSearch('');
     setStripeClientMergeSearch('');
-    setStripeSyncStats({
-      source: '',
-      total: 0,
-      matched: 0,
-      unmatched: 0
-    });
-    setStripeSyncStage('connect');
+    setStripeSyncStage('review');
     setIsStripeSyncOpen(true);
   };
 
   const closeStripeSync = () => {
     setIsStripeSyncOpen(false);
-    setStripeSyncStage('connect');
+    setStripeSyncStage('review');
   };
 
-  const handleStripeConnect = async () => {
-    if (!stripeApiKey.trim()) {
+  const prepareStripeSync = async (apiKey) => {
+    if (!apiKey.trim()) {
       showToast('error', 'Stripe key required', 'Enter your Stripe secret key to start syncing.');
       return;
     }
     setStripeSyncStage('loading');
-    const { customers, source, warning } = await fetchStripeCustomers(stripeApiKey.trim());
+    const { customers, source, warning } = await fetchStripeCustomers(apiKey.trim());
     const matches = buildStripeMatches(customers);
     const matchedCount = matches.filter(match => match.canSync).length;
     const unmatchedCount = matches.length - matchedCount;
@@ -2550,12 +2556,16 @@ function App() {
 
   const handleAircallLogin = async (event) => {
     event.preventDefault();
-    const trimmedToken = aircallTokenInput.trim();
-    const trimmedAppId = aircallAppIdInput.trim();
-    const trimmedMetaToken = metaTokenInput.trim();
-    const trimmedGoogleToken = googleTokenInput.trim();
-    const trimmedGoogleDeveloperToken = googleDeveloperTokenInput.trim();
-    const trimmedGoogleLoginCustomerId = googleLoginCustomerIdInput.trim();
+    const credentialLines = loginCredentialsInput.split(/\r?\n/).map(line => line.trim());
+    const [
+      trimmedToken = '',
+      trimmedAppId = '',
+      trimmedMetaToken = '',
+      trimmedStripeToken = '',
+      trimmedGoogleToken = '',
+      trimmedGoogleDeveloperToken = '',
+      trimmedGoogleLoginCustomerId = ''
+    ] = credentialLines;
     if (!trimmedAppId) {
       showToast('error', 'App ID required', 'Enter your Aircall App ID to continue.');
       return;
@@ -2568,12 +2578,17 @@ function App() {
       showToast('error', 'Meta token required', 'Enter your Meta system user token to continue.');
       return;
     }
+    if (!trimmedStripeToken) {
+      showToast('error', 'Stripe key required', 'Enter your Stripe API token to continue.');
+      return;
+    }
 
     setIsSubmittingAircallToken(true);
     try {
       localStorage.setItem('aircallToken', trimmedToken);
       localStorage.setItem('aircallAppId', trimmedAppId);
       localStorage.setItem(META_ACCESS_TOKEN_KEY, trimmedMetaToken);
+      localStorage.setItem(STRIPE_API_KEY_KEY, trimmedStripeToken);
       if (trimmedGoogleToken) {
         localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, trimmedGoogleToken);
       } else {
@@ -2594,15 +2609,18 @@ function App() {
       setIsAircallLoggedIn(true);
       setMetaAccessToken(trimmedMetaToken);
       setIsMetaLoggedIn(true);
+      setStripeApiKey(trimmedStripeToken);
       setGoogleAccessToken(trimmedGoogleToken);
       setGoogleDeveloperToken(trimmedGoogleDeveloperToken);
       setGoogleLoginCustomerId(trimmedGoogleLoginCustomerId);
+      setLoginCredentialsInput('');
       setAircallTokenInput('');
       setAircallAppIdInput(trimmedAppId);
       setMetaTokenInput('');
       setGoogleTokenInput('');
       setGoogleDeveloperTokenInput(trimmedGoogleDeveloperToken);
       setGoogleLoginCustomerIdInput(trimmedGoogleLoginCustomerId);
+      await prepareStripeSync(trimmedStripeToken);
     } catch (error) {
       showToast('error', 'Aircall login failed', error.message);
     } finally {
@@ -2614,11 +2632,29 @@ function App() {
     localStorage.removeItem('aircallToken');
     localStorage.removeItem('aircallAppId');
     localStorage.removeItem(META_ACCESS_TOKEN_KEY);
+    localStorage.removeItem(STRIPE_API_KEY_KEY);
     localStorage.removeItem(GOOGLE_ACCESS_TOKEN_KEY);
     localStorage.removeItem(GOOGLE_DEVELOPER_TOKEN_KEY);
     localStorage.removeItem(GOOGLE_LOGIN_CUSTOMER_ID_KEY);
     setAircallToken('');
     setAircallAppId('');
+    setLoginCredentialsInput('');
+    setStripeApiKey('');
+    setStripeMatches([]);
+    setStripeMatchSelection(new Set());
+    setStripeMergeSelection({
+      stripeCustomerId: '',
+      clientId: ''
+    });
+    setStripeCustomerMergeSearch('');
+    setStripeClientMergeSearch('');
+    setStripeSyncStats({
+      source: '',
+      total: 0,
+      matched: 0,
+      unmatched: 0
+    });
+    setStripeSyncStage('review');
     setAircallTokenInput('');
     setAircallAppIdInput('');
     setAircallActivity({});
@@ -3239,81 +3275,33 @@ function App() {
               <img src={META_LOGO_URL} alt="Purge Digital logo" />
               <div>
                 <h1 className="login-title">PurgeDigital CRM</h1>
-                <p className="login-subtitle">Connect Aircall, Meta, and Google Ads to unlock CRM activity and ad risk insights.</p>
+                <p className="login-subtitle">Connect Aircall, Meta, Stripe, and Google Ads to unlock CRM activity and ad risk insights.</p>
               </div>
             </div>
             <form className="login-form" onSubmit={handleAircallLogin}>
               <div>
-                <label className="form-label" htmlFor="aircallToken">Aircall API Token</label>
-                <input
-                  id="aircallToken"
-                  type="password"
-                  className="login-input"
-                  value={aircallTokenInput}
-                  onChange={(event) => setAircallTokenInput(event.target.value)}
-                  placeholder="Paste your Aircall token"
-                />
-                <div className="login-helper">Your token is stored locally in this browser only.</div>
+                <h2 className="form-label">Paste credentials one per line</h2>
+                <p className="login-instructions">Use the exact order below (Google Ads lines are optional).</p>
+                <p className="login-format">
+                  Aircall API token{'\n'}
+                  Aircall ID{'\n'}
+                  Meta system user token{'\n'}
+                  Stripe API token{'\n'}
+                  Google Ads access token{'\n'}
+                  Google Ads developer token{'\n'}
+                  Google Ads login customer ID
+                </p>
               </div>
               <div>
-                <label className="form-label" htmlFor="aircallAppId">Aircall App ID</label>
-                <input
-                  id="aircallAppId"
-                  type="text"
-                  className="login-input"
-                  value={aircallAppIdInput}
-                  onChange={(event) => setAircallAppIdInput(event.target.value)}
-                  placeholder="Paste your Aircall App ID"
+                <label className="form-label" htmlFor="workspaceCredentials">Credentials</label>
+                <textarea
+                  id="workspaceCredentials"
+                  className="login-textarea"
+                  value={loginCredentialsInput}
+                  onChange={(event) => setLoginCredentialsInput(event.target.value)}
+                  placeholder={`Aircall API token\nAircall ID\nMeta system user token\nStripe API token\nGoogle Ads access token (optional)\nGoogle Ads developer token (optional)\nGoogle Ads login customer ID (optional)`}
                 />
-                <div className="login-helper">Your App ID is stored locally in this browser only.</div>
-              </div>
-              <div>
-                <label className="form-label" htmlFor="metaAccessToken">Meta System User Token</label>
-                <input
-                  id="metaAccessToken"
-                  type="password"
-                  className="login-input"
-                  value={metaTokenInput}
-                  onChange={(event) => setMetaTokenInput(event.target.value)}
-                  placeholder="Paste your Meta system user token"
-                />
-                <div className="login-helper">Your Meta token is stored locally in this browser only.</div>
-              </div>
-              <div>
-                <label className="form-label" htmlFor="googleAccessToken">Google Ads Access Token</label>
-                <input
-                  id="googleAccessToken"
-                  type="password"
-                  className="login-input"
-                  value={googleTokenInput}
-                  onChange={(event) => setGoogleTokenInput(event.target.value)}
-                  placeholder="Paste your Google Ads access token"
-                />
-                <div className="login-helper">Optional for now — stored locally in this browser only.</div>
-              </div>
-              <div>
-                <label className="form-label" htmlFor="googleDeveloperToken">Google Ads Developer Token</label>
-                <input
-                  id="googleDeveloperToken"
-                  type="password"
-                  className="login-input"
-                  value={googleDeveloperTokenInput}
-                  onChange={(event) => setGoogleDeveloperTokenInput(event.target.value)}
-                  placeholder="Paste your Google Ads developer token"
-                />
-                <div className="login-helper">Optional for now — used when pulling Google Ads account data.</div>
-              </div>
-              <div>
-                <label className="form-label" htmlFor="googleLoginCustomerId">Google Ads Login Customer ID (optional)</label>
-                <input
-                  id="googleLoginCustomerId"
-                  type="text"
-                  className="login-input"
-                  value={googleLoginCustomerIdInput}
-                  onChange={(event) => setGoogleLoginCustomerIdInput(event.target.value)}
-                  placeholder="Manager account ID (if required)"
-                />
-                <div className="login-helper">Add this if you use a manager account to access client customers.</div>
+                <div className="login-helper">Tokens are stored locally in this browser only.</div>
               </div>
               <button className="login-btn" type="submit" disabled={isSubmittingAircallToken}>
                 {isSubmittingAircallToken ? 'Initializing workspace…' : 'Initialize Workspace'}
@@ -3635,7 +3623,7 @@ function App() {
                 <span className="section-label">Stripe Sync</span>
                 <h2 className="modal-title">Sync Stripe customers</h2>
                 <p className="stripe-subtitle">
-                  Connect your Stripe API key to pull every Stripe customer, match them to your client database, and merge any remaining records.
+                  Review synced Stripe customers, match them to your client database, and merge any remaining records.
                 </p>
               </div>
               <span className="stripe-pill">
@@ -3644,10 +3632,7 @@ function App() {
             </div>
 
             <div className="stripe-stepper">
-              <span className={`stripe-step ${stripeSyncStage === 'connect' ? 'active' : 'complete'}`}>
-                <FileJson size={14} /> Connect
-              </span>
-              <span className={`stripe-step ${stripeSyncStage === 'loading' ? 'active' : stripeSyncStage === 'review' || stripeSyncStage === 'complete' ? 'complete' : ''}`}>
+              <span className={`stripe-step ${stripeSyncStage === 'loading' ? 'active' : stripeSyncStage === 'review' || stripeSyncStage === 'merge' || stripeSyncStage === 'complete' ? 'complete' : ''}`}>
                 <Table size={14} /> Pull Stripe Customers
               </span>
               <span className={`stripe-step ${stripeSyncStage === 'review' ? 'active' : stripeSyncStage === 'merge' || stripeSyncStage === 'complete' ? 'complete' : ''}`}>
@@ -3657,54 +3642,6 @@ function App() {
                 <Users size={14} /> Merge
               </span>
             </div>
-
-            {stripeSyncStage === 'connect' && (
-              <div className="stripe-connect-card">
-                <div>
-                  <label className="section-label" htmlFor="stripe-key">Stripe Secret Key</label>
-                  <input
-                    id="stripe-key"
-                    type="password"
-                    placeholder="sk_live_..."
-                    className="stripe-key-input"
-                    value={stripeApiKey}
-                    onChange={(event) => setStripeApiKey(event.target.value)}
-                  />
-                  <p className="stripe-subtitle" style={{ marginTop: '0.5rem' }}>
-                    We never store your key locally. This is used to request every customer and their subscription history from Stripe.
-                  </p>
-                </div>
-                <div className="stripe-feature-grid">
-                  <div className="stripe-feature">
-                    <span className="stripe-feature-icon"><Table size={16} /></span>
-                    <div>
-                      <div className="stripe-customer-title">Full customer pull</div>
-                      <div className="stripe-customer-sub">Fetch every Stripe customer and subscription status.</div>
-                    </div>
-                  </div>
-                  <div className="stripe-feature">
-                    <span className="stripe-feature-icon"><CheckCircle size={16} /></span>
-                    <div>
-                      <div className="stripe-customer-title">Smart matching</div>
-                      <div className="stripe-customer-sub">We match by phone, name, and company fields.</div>
-                    </div>
-                  </div>
-                  <div className="stripe-feature">
-                    <span className="stripe-feature-icon"><ShieldCheck size={16} /></span>
-                    <div>
-                      <div className="stripe-customer-title">Append-only sync</div>
-                      <div className="stripe-customer-sub">Confirm matches to append missing Stripe subscription data.</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-actions" style={{ marginTop: '0.5rem' }}>
-                  <button className="btn-ghost" onClick={closeStripeSync}>Cancel</button>
-                  <button className="btn-stripe" onClick={handleStripeConnect}>
-                    <Play size={18} /> Start Sync
-                  </button>
-                </div>
-              </div>
-            )}
 
             {stripeSyncStage === 'loading' && (
               <div className="stripe-loading">
@@ -3809,7 +3746,7 @@ function App() {
                   </table>
                 </div>
                 <div className="stripe-review-actions">
-                  <button className="btn-ghost" onClick={() => setStripeSyncStage('connect')}>Back</button>
+                  <button className="btn-ghost" onClick={closeStripeSync}>Close</button>
                   <button className="btn-primary" onClick={confirmStripeMatches} disabled={stripeMatchSelection.size === 0}>
                     Confirm & Continue <ArrowRight size={16} />
                   </button>
