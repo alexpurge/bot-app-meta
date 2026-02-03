@@ -3321,13 +3321,7 @@ function App() {
     setMetaAdsSyncStage('loading');
     const { accounts, source, warning } = await fetchMetaAdsAccounts();
     const matches = buildAdsMatches(accounts, 'meta');
-    const availableCount = matches.filter(match => match.canSync).length;
-    const matchedCount = matches.filter(match => match.client).length;
-    const alreadySyncedCount = matches.filter(match => match.alreadySynced).length;
-    const unmatchedCount = matches.filter(match => !match.client).length;
     const conflictCount = matches.filter(match => match.isConflict).length;
-    setMetaAdsMatches(matches);
-    setMetaAdsMatchSelection(new Set(matches.filter(match => match.canSync).map(match => match.id)));
     const visibleMatches = matches.filter(match => !match.alreadySynced);
     const availableCount = visibleMatches.filter(match => match.canSync).length;
     const matchedCount = visibleMatches.filter(match => match.client).length;
