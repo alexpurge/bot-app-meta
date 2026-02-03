@@ -3007,13 +3007,20 @@ function App() {
         location: normalizeText(client.location)
       };
 
-      return existingClients.some(existing => (
-        (candidate.businessName && candidate.businessName === existing.businessName) ||
-        (candidate.contactName && candidate.contactName === existing.contactName) ||
-        (candidate.email && candidate.email === existing.email) ||
-        (candidate.phone && candidate.phone === existing.phone) ||
-        (candidate.location && candidate.location === existing.location)
-      ));
+      return existingClients.some(existing => {
+        const sameBusiness = candidate.businessName && candidate.businessName === existing.businessName;
+        const sameContact = candidate.contactName && candidate.contactName === existing.contactName;
+        const sameEmail = candidate.email && candidate.email === existing.email;
+        const samePhone = candidate.phone && candidate.phone === existing.phone;
+        const sameLocation = candidate.location && candidate.location === existing.location;
+
+        if (sameBusiness) return true;
+        if (sameEmail || samePhone || sameLocation) return true;
+        if (sameContact) {
+          return !candidate.businessName || !existing.businessName || sameBusiness;
+        }
+        return false;
+      });
     };
 
     const newClients = potentialClients.filter(client => !isDuplicate(client));
