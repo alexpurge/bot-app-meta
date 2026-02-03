@@ -2146,20 +2146,135 @@ function App() {
     };
   };
 
+  const callMetaGraphAPI = async (endpoint, params = {}) => {
+    const url = new URL(`${META_BASE_URL}/${endpoint}`);
+    const token = metaAccessToken.trim();
+    if (!token) {
+      throw new Error('Meta access token missing.');
+    }
+    url.searchParams.set('access_token', token);
+    Object.entries(params).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach(entry => url.searchParams.append(key, entry));
+      } else if (value !== undefined && value !== null) {
+        url.searchParams.set(key, value);
+      }
+    });
+
+    const response = await fetch(url.toString());
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.error) {
+      const message = payload?.error?.message || `Meta API error: ${response.status}`;
+      throw new Error(message);
+    }
+    return payload;
+  };
+
+  const toNumber = (value) => {
+    if (value === null || value === undefined) return 0;
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const buildMetaAdsAccountRecord = (account, insightsPayload, usersPayload, activitiesPayload) => {
+    const insights = Array.isArray(insightsPayload?.data) ? insightsPayload.data[0] : null;
+    const teamMembers = Array.isArray(usersPayload?.data) ? usersPayload.data : [];
+    const activities = Array.isArray(activitiesPayload?.data) ? activitiesPayload.data : [];
+
+    return {
+      id: account.id,
+      name: account.name,
+      billingEmail: '',
+      website: '',
+      overview: {
+        id: account.id,
+        name: account.name,
+        currency: account.currency,
+        timezone_name: account.timezone_name,
+        account_status: account.account_status,
+        balance: account.balance,
+        spend_cap: account.spend_cap,
+        amount_spent: account.amount_spent,
+        business_name: account.business_name
+      },
+      metrics: {
+        impressions: toNumber(insights?.impressions),
+        clicks: toNumber(insights?.clicks),
+        ctr: toNumber(insights?.ctr),
+        cpc: toNumber(insights?.cpc),
+        cpm: toNumber(insights?.cpm),
+        spend: toNumber(insights?.spend || account.amount_spent)
+      },
+      team: teamMembers.map(member => ({
+        id: member.id,
+        name: member.name || member.email || `User ${member.id}`,
+        role: member.role || 'User',
+        email: member.email || '',
+        accessLabels: Array.isArray(member.permissions) ? member.permissions : []
+      })),
+      changeHistory: activities.map(activity => ({
+        event_time: activity.event_time || activity.created_time || null,
+        actor_name: activity.actor_name || activity.actor || activity.from_name || '',
+        event_type: activity.event_type || activity.type || '',
+        translated_event_type: activity.translated_event_type || activity.event_type || '',
+        object_name: activity.object_name || activity.object || '',
+        object_type: activity.object_type || '',
+        object_id: activity.object_id || activity.object?.id || ''
+      }))
+    };
+  };
+
   const fetchMetaAdsAccounts = async () => {
-    const fallbackAccounts = buildAdsFixtureAccounts('meta');
-    if (!metaAccessToken) {
+    if (!metaAccessToken.trim()) {
       return {
-        accounts: fallbackAccounts,
-        source: 'Sample data',
-        warning: 'Meta system user token missing. Showing sample Meta Ads accounts.'
+        accounts: [],
+        source: 'Meta Ads API',
+        warning: 'Meta system user token missing.'
       };
     }
-    return {
-      accounts: fallbackAccounts,
-      source: 'Sample data',
-      warning: 'Meta Ads API calls are blocked in the browser. Showing sample Meta Ads accounts.'
-    };
+
+    try {
+      const accountsPayload = await callMetaGraphAPI('me/adaccounts', {
+        fields: 'id,name,account_status,currency,timezone_name,amount_spent,balance,spend_cap,business_name,owner',
+        limit: '200'
+      });
+      const accounts = Array.isArray(accountsPayload?.data) ? accountsPayload.data : [];
+
+      const enrichedAccounts = await Promise.all(accounts.map(async (account) => {
+        const insightsPromise = callMetaGraphAPI(`${account.id}/insights`, {
+          fields: 'impressions,clicks,ctr,cpc,cpm,spend',
+          date_preset: 'last_30d',
+          limit: '1'
+        }).catch(() => null);
+        const usersPromise = callMetaGraphAPI(`${account.id}/assigned_users`, {
+          fields: 'id,name,email,role,permissions',
+          limit: '200'
+        }).catch(() => ({ data: [] }));
+        const activitiesPromise = callMetaGraphAPI(`${account.id}/activities`, {
+          fields: 'event_time,actor_name,event_type,translated_event_type,object_name,object_type,object_id',
+          limit: '25'
+        }).catch(() => ({ data: [] }));
+
+        const [insights, users, activities] = await Promise.all([
+          insightsPromise,
+          usersPromise,
+          activitiesPromise
+        ]);
+
+        return buildMetaAdsAccountRecord(account, insights, users, activities);
+      }));
+
+      return {
+        accounts: enrichedAccounts,
+        source: 'Meta Ads API'
+      };
+    } catch (error) {
+      return {
+        accounts: [],
+        source: 'Meta Ads API',
+        warning: error.message || 'Meta Ads request failed.'
+      };
+    }
   };
 
   const fetchStripeCustomerDetails = async (apiKey, customerId) => {
@@ -2899,7 +3014,7 @@ function App() {
     });
     setMetaAdsSyncStage('review');
     if (warning) {
-      showToast('error', 'Meta Ads sync fallback', warning);
+      showToast('error', 'Meta Ads sync failed', warning);
     } else {
       showToast('success', 'Meta Ads sync ready', `Pulled ${matches.length} Meta Ads accounts.`);
     }
