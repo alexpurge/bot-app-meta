@@ -1221,16 +1221,53 @@ function App() {
 
   const buildClientMetaSnapshot = (client) => {
     if (!client) return null;
-    const overview = client.metaOverview || client.overview || client.metaRiskOverview || null;
-    const metrics = client.metaMetrics || client.metrics || client.performance || null;
-    const team = Array.isArray(client.metaTeam) ? client.metaTeam : Array.isArray(client.team) ? client.team : [];
+    const overview = client.metaOverview
+      || client.metaRiskOverview
+      || client.metaRisk?.overview
+      || client.overview
+      || null;
+    const metrics = client.metaMetrics
+      || client.metaRiskMetrics
+      || client.metaRisk?.metrics
+      || client.metrics
+      || client.performance
+      || null;
+    const team = Array.isArray(client.metaTeam)
+      ? client.metaTeam
+      : Array.isArray(client.metaRiskTeam)
+        ? client.metaRiskTeam
+        : Array.isArray(client.metaRisk?.team)
+          ? client.metaRisk.team
+          : Array.isArray(client.teamRoster)
+            ? client.teamRoster
+            : Array.isArray(client.team)
+              ? client.team
+              : [];
     const changeHistory = Array.isArray(client.metaChangeHistory)
       ? client.metaChangeHistory
-      : Array.isArray(client.changeHistory)
-        ? client.changeHistory
-        : [];
+      : Array.isArray(client.metaRiskChangeHistory)
+        ? client.metaRiskChangeHistory
+        : Array.isArray(client.metaRisk?.changeHistory)
+          ? client.metaRisk.changeHistory
+          : Array.isArray(client.changeHistory)
+            ? client.changeHistory
+            : [];
     if (!overview && !metrics && team.length === 0 && changeHistory.length === 0) return null;
-    return { overview, metrics, team, changeHistory };
+    const source = client.metaRiskOverview
+      || client.metaRiskMetrics
+      || client.metaRiskTeam
+      || client.metaRiskChangeHistory
+      || client.metaRisk
+      || client.teamRoster
+      ? 'meta-risk'
+      : 'client';
+    return {
+      overview,
+      metrics,
+      team,
+      changeHistory,
+      source
+    };
   };
 
   const buildClientGoogleSnapshot = (client) => {
@@ -1247,15 +1284,6 @@ function App() {
     return { overview, metrics, team, changeHistory };
   };
 
-  const isMetaSnapshotComplete = (snapshot) => {
-    if (!snapshot) return false;
-    const hasOverview = snapshot.overview && Object.keys(snapshot.overview).length > 0;
-    const hasMetrics = snapshot.metrics && Object.keys(snapshot.metrics).length > 0;
-    const hasTeam = Array.isArray(snapshot.team) && snapshot.team.length > 0;
-    const hasChangeHistory = Array.isArray(snapshot.changeHistory) && snapshot.changeHistory.length > 0;
-    return hasOverview && hasMetrics && hasTeam && hasChangeHistory;
-  };
-
   const isGoogleSnapshotComplete = (snapshot) => {
     if (!snapshot) return false;
     const hasOverview = snapshot.overview && Object.keys(snapshot.overview).length > 0;
@@ -1263,17 +1291,6 @@ function App() {
     const hasTeam = Array.isArray(snapshot.team) && snapshot.team.length > 0;
     const hasChangeHistory = Array.isArray(snapshot.changeHistory) && snapshot.changeHistory.length > 0;
     return hasOverview && hasMetrics && hasTeam && hasChangeHistory;
-  };
-
-  const mergeMetaSnapshots = (primary, fallback) => {
-    if (!primary) return fallback;
-    if (!fallback) return primary;
-    return {
-      overview: primary.overview || fallback.overview,
-      metrics: primary.metrics || fallback.metrics,
-      team: primary.team?.length ? primary.team : fallback.team || [],
-      changeHistory: primary.changeHistory?.length ? primary.changeHistory : fallback.changeHistory || []
-    };
   };
 
   const mergeGoogleSnapshots = (primary, fallback) => {
@@ -1306,81 +1323,6 @@ function App() {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return 'Unavailable';
     return `${(numeric * 100).toFixed(2)}%`;
-  };
-
-  const callMetaAPI = async (endpoint, params = {}) => {
-    if (!metaAccessToken) {
-      throw new Error('Meta access token is missing. Please connect Meta from the login screen.');
-    }
-    const queryParams = new URLSearchParams({ access_token: metaAccessToken, ...params });
-    const response = await fetch(`${META_BASE_URL}${endpoint}?${queryParams.toString()}`);
-    const data = await response.json();
-    if (!response.ok || data?.error) {
-      throw data?.error || new Error('Meta API request failed.');
-    }
-    return data;
-  };
-
-  const fetchMetaSnapshot = async (accountId) => {
-    const errorLogs = [];
-    let overview = null;
-    let metrics = null;
-    let changeHistory = [];
-    let team = [];
-
-    try {
-      overview = await callMetaAPI(`/${accountId}`, {
-        fields: 'name,account_id,account_status,currency,amount_spent,balance,business_name,timezone_name,created_time'
-      });
-    } catch (error) {
-      errorLogs.push(`Overview error: ${normalizeMetaError(error)}`);
-    }
-
-    try {
-      const insights = await callMetaAPI(`/${accountId}/insights`, {
-        fields: 'spend,impressions,clicks,ctr,cpc,cpm,actions',
-        date_preset: 'last_30d',
-        limit: 1
-      });
-      metrics = insights?.data?.[0] || null;
-    } catch (error) {
-      errorLogs.push(`Metrics error: ${normalizeMetaError(error)}`);
-    }
-
-    try {
-      const activity = await callMetaAPI(`/${accountId}/activities`, {
-        fields: 'event_time,event_type,actor_id,actor_name,object_name,object_type,translated_event_type,application_name',
-        limit: 50
-      });
-      changeHistory = activity?.data || [];
-      const uniqueMembers = new Map();
-      changeHistory.forEach((log, index) => {
-        const key = log.actor_id || log.actor_name || `actor-${index}`;
-        if (!uniqueMembers.has(key)) {
-          uniqueMembers.set(key, {
-            id: log.actor_id || `actor-${index}`,
-            name: log.actor_name || 'Unknown user',
-            role: log.application_name || 'Meta',
-            accessLabels: [log.translated_event_type || log.event_type || 'Change history']
-          });
-        }
-      });
-      team = Array.from(uniqueMembers.values());
-    } catch (error) {
-      errorLogs.push(`Change history error: ${normalizeMetaError(error)}`);
-    }
-
-    const snapshot = { overview, metrics, team, changeHistory };
-    const missingFields = [];
-    if (!overview) missingFields.push('overview');
-    if (!metrics) missingFields.push('metrics');
-    if (!team.length) missingFields.push('team');
-    if (!changeHistory.length) missingFields.push('changeHistory');
-    if (missingFields.length > 0) {
-      errorLogs.push(`Missing required fields: ${missingFields.join(', ')}`);
-    }
-
-    return { snapshot, errorLogs };
   };
 
   const callGoogleAdsAPI = async (customerId, query) => {
@@ -2450,26 +2392,13 @@ function App() {
     }));
 
     const clientSnapshot = buildClientMetaSnapshot(selectedClient);
-    if (isMetaSnapshotComplete(clientSnapshot)) {
-      setMetaByClient(prev => ({
-        ...prev,
-        [selectedClient.id]: {
-          ...(prev[selectedClient.id] || {}),
-          accountId,
-          status: 'success',
-          error: null,
-          logs: [],
-          source: 'client',
-          data: clientSnapshot
-        }
-      }));
-      return;
-    }
-
-    try {
-      const { snapshot: metaSnapshot, errorLogs } = await fetchMetaSnapshot(accountId);
-      const merged = mergeMetaSnapshots(clientSnapshot, metaSnapshot);
-      const isComplete = isMetaSnapshotComplete(merged);
+    if (clientSnapshot) {
+      const missingFields = [];
+      if (!clientSnapshot.overview) missingFields.push('overview');
+      if (!clientSnapshot.metrics) missingFields.push('metrics');
+      if (!clientSnapshot.team?.length) missingFields.push('team');
+      if (!clientSnapshot.changeHistory?.length) missingFields.push('changeHistory');
+      const isComplete = missingFields.length === 0;
       setMetaByClient(prev => ({
         ...prev,
         [selectedClient.id]: {
@@ -2477,26 +2406,32 @@ function App() {
           accountId,
           status: isComplete ? 'success' : 'error',
           error: isComplete ? null : 'Meta data is incomplete. See logs below.',
-          logs: errorLogs,
-          source: clientSnapshot ? 'client+meta' : 'meta',
-          data: merged
-        }
-      }));
-    } catch (error) {
-      const message = normalizeMetaError(error);
-      setMetaByClient(prev => ({
-        ...prev,
-        [selectedClient.id]: {
-          ...(prev[selectedClient.id] || {}),
-          accountId,
-          status: 'error',
-          error: message,
-          logs: [message],
-          source: 'meta',
+          logs: isComplete ? [] : [
+            `Missing required fields: ${missingFields.join(', ')}`,
+            'Meta lookup now only uses the data already loaded from the Meta Risk page.'
+          ],
+          source: clientSnapshot.source || 'client',
           data: clientSnapshot
         }
       }));
+      return;
     }
+
+    setMetaByClient(prev => ({
+      ...prev,
+      [selectedClient.id]: {
+        ...(prev[selectedClient.id] || {}),
+        accountId,
+        status: 'error',
+        error: 'No Meta Risk data is loaded for this client.',
+        logs: [
+          'Meta lookup only reads data already loaded in the Meta Risk page for this client ID.',
+          'Open the Meta Risk page and load the account there first.'
+        ],
+        source: 'client',
+        data: null
+      }
+    }));
   };
 
   const handleGoogleLookup = async (event) => {
