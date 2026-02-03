@@ -396,6 +396,28 @@ const STYLES = `
   .detail-tab { padding: 0.5rem 1rem; border-radius: 0.75rem 0.75rem 0 0; background: transparent; border: none; font-weight: 700; color: var(--text-secondary); cursor: pointer; }
   .detail-tab.active { color: var(--accent-primary); border-bottom: 3px solid var(--accent-primary); background: rgba(255, 93, 0, 0.12); }
 
+  .meta-panel { border-radius: 1rem; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 23, 42, 0.6); padding: 1.5rem; box-shadow: 0 18px 35px rgba(0, 0, 0, 0.35); }
+  .meta-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .meta-panel-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+  .meta-panel-helper { color: var(--text-secondary); font-size: 0.9rem; }
+  .meta-source-pill { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.35rem 0.75rem; background: rgba(255, 93, 0, 0.12); border: 1px solid rgba(255, 93, 0, 0.35); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-primary); font-weight: 700; }
+  .meta-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.75rem; align-items: end; margin-top: 1rem; }
+  .meta-input { height: 3rem; }
+  .meta-submit { height: 3rem; padding: 0 1.25rem; }
+  .meta-subtabs { display: flex; gap: 0.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin: 1.5rem 0 1rem; flex-wrap: wrap; }
+  .meta-subtab { padding: 0.4rem 0.85rem; border-radius: 999px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); cursor: pointer; }
+  .meta-subtab.active { color: var(--accent-primary); border-color: rgba(255, 93, 0, 0.5); background: rgba(255, 93, 0, 0.16); }
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+  .meta-card { padding: 1rem; border-radius: 0.85rem; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .meta-card-label { color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 0.35rem; }
+  .meta-card-value { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+  .meta-list { display: grid; gap: 0.75rem; }
+  .meta-list-item { padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .meta-list-title { font-weight: 700; margin-bottom: 0.25rem; }
+  .meta-list-meta { color: var(--text-secondary); font-size: 0.85rem; display: grid; gap: 0.25rem; }
+  .meta-error { margin-top: 1rem; padding: 1rem; border-radius: 0.85rem; background: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.3); color: #fecaca; font-size: 0.85rem; }
+  .meta-log { margin-top: 0.75rem; padding: 0.75rem; border-radius: 0.75rem; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.75rem; color: var(--text-secondary); white-space: pre-wrap; }
+
   /* Services Tab */
   .services-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
   .services-meta { font-size: 0.85rem; color: var(--text-secondary); }
@@ -467,6 +489,8 @@ const AIRCALL_APP_ID = '827d006737dd9e69aaa89d6300a1a9f8';
 const AIRCALL_BASE_URL = 'https://api.aircall.io/v1';
 const AIRCALL_TEAM_NAME = 'Account Management';
 const META_ACCESS_TOKEN_KEY = 'metaAccessToken';
+const META_GRAPH_VERSION = 'v19.0';
+const META_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 const META_LOGO_URL = 'https://i.imgur.com/QjjDjuU.png';
 const BRISBANE_TIME_ZONE = 'Australia/Brisbane';
 
@@ -849,6 +873,9 @@ function App() {
   const [aircallActivity, setAircallActivity] = useState({});
   const [toast, setToast] = useState(null);
   const [clientDetailTab, setClientDetailTab] = useState('overview');
+  const [clientMetaTab, setClientMetaTab] = useState('overview');
+  const [metaAccountInput, setMetaAccountInput] = useState('');
+  const [metaByClient, setMetaByClient] = useState({});
 
   // Import Review State
   const [isImportReviewOpen, setIsImportReviewOpen] = useState(false);
@@ -872,8 +899,11 @@ function App() {
   useEffect(() => {
     if (selectedClient) {
       setClientDetailTab('overview');
+      setClientMetaTab('overview');
+      const storedMeta = metaByClient[selectedClient.id];
+      setMetaAccountInput(storedMeta?.accountId || selectedClient.metaAccountId || '');
     }
-  }, [selectedClient]);
+  }, [metaByClient, selectedClient]);
 
 
   // Form State
@@ -939,6 +969,126 @@ function App() {
     return date.toLocaleDateString('en-AU', {
       timeZone: BRISBANE_TIME_ZONE
     });
+  };
+
+  const normalizeMetaError = (error) => {
+    if (!error) return 'Unknown error';
+    if (typeof error === 'string') return error;
+    if (error.message) return error.message;
+    try {
+      return JSON.stringify(error, null, 2);
+    } catch {
+      return String(error);
+    }
+  };
+
+  const buildClientMetaSnapshot = (client) => {
+    if (!client) return null;
+    const overview = client.metaOverview || client.overview || client.metaRiskOverview || null;
+    const metrics = client.metaMetrics || client.metrics || client.performance || null;
+    const team = Array.isArray(client.metaTeam) ? client.metaTeam : Array.isArray(client.team) ? client.team : [];
+    const changeHistory = Array.isArray(client.metaChangeHistory)
+      ? client.metaChangeHistory
+      : Array.isArray(client.changeHistory)
+        ? client.changeHistory
+        : [];
+    if (!overview && !metrics && team.length === 0 && changeHistory.length === 0) return null;
+    return { overview, metrics, team, changeHistory };
+  };
+
+  const isMetaSnapshotComplete = (snapshot) => {
+    if (!snapshot) return false;
+    const hasOverview = snapshot.overview && Object.keys(snapshot.overview).length > 0;
+    const hasMetrics = snapshot.metrics && Object.keys(snapshot.metrics).length > 0;
+    const hasTeam = Array.isArray(snapshot.team) && snapshot.team.length > 0;
+    const hasChangeHistory = Array.isArray(snapshot.changeHistory) && snapshot.changeHistory.length > 0;
+    return hasOverview && hasMetrics && hasTeam && hasChangeHistory;
+  };
+
+  const mergeMetaSnapshots = (primary, fallback) => {
+    if (!primary) return fallback;
+    if (!fallback) return primary;
+    return {
+      overview: primary.overview || fallback.overview,
+      metrics: primary.metrics || fallback.metrics,
+      team: primary.team?.length ? primary.team : fallback.team || [],
+      changeHistory: primary.changeHistory?.length ? primary.changeHistory : fallback.changeHistory || []
+    };
+  };
+
+  const callMetaAPI = async (endpoint, params = {}) => {
+    if (!metaAccessToken) {
+      throw new Error('Meta access token is missing. Please connect Meta from the login screen.');
+    }
+    const queryParams = new URLSearchParams({ access_token: metaAccessToken, ...params });
+    const response = await fetch(`${META_BASE_URL}${endpoint}?${queryParams.toString()}`);
+    const data = await response.json();
+    if (!response.ok || data?.error) {
+      throw data?.error || new Error('Meta API request failed.');
+    }
+    return data;
+  };
+
+  const fetchMetaSnapshot = async (accountId) => {
+    const errorLogs = [];
+    let overview = null;
+    let metrics = null;
+    let changeHistory = [];
+    let team = [];
+
+    try {
+      overview = await callMetaAPI(`/${accountId}`, {
+        fields: 'name,account_id,account_status,currency,amount_spent,balance,business_name,timezone_name,created_time'
+      });
+    } catch (error) {
+      errorLogs.push(`Overview error: ${normalizeMetaError(error)}`);
+    }
+
+    try {
+      const insights = await callMetaAPI(`/${accountId}/insights`, {
+        fields: 'spend,impressions,clicks,ctr,cpc,cpm,actions',
+        date_preset: 'last_30d',
+        limit: 1
+      });
+      metrics = insights?.data?.[0] || null;
+    } catch (error) {
+      errorLogs.push(`Metrics error: ${normalizeMetaError(error)}`);
+    }
+
+    try {
+      const activity = await callMetaAPI(`/${accountId}/activities`, {
+        fields: 'event_time,event_type,actor_id,actor_name,object_name,object_type,translated_event_type,application_name',
+        limit: 50
+      });
+      changeHistory = activity?.data || [];
+      const uniqueMembers = new Map();
+      changeHistory.forEach((log, index) => {
+        const key = log.actor_id || log.actor_name || `actor-${index}`;
+        if (!uniqueMembers.has(key)) {
+          uniqueMembers.set(key, {
+            id: log.actor_id || `actor-${index}`,
+            name: log.actor_name || 'Unknown user',
+            role: log.application_name || 'Meta',
+            accessLabels: [log.translated_event_type || log.event_type || 'Change history']
+          });
+        }
+      });
+      team = Array.from(uniqueMembers.values());
+    } catch (error) {
+      errorLogs.push(`Change history error: ${normalizeMetaError(error)}`);
+    }
+
+    const snapshot = { overview, metrics, team, changeHistory };
+    const missingFields = [];
+    if (!overview) missingFields.push('overview');
+    if (!metrics) missingFields.push('metrics');
+    if (!team.length) missingFields.push('team');
+    if (!changeHistory.length) missingFields.push('changeHistory');
+    if (missingFields.length > 0) {
+      errorLogs.push(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+
+    return { snapshot, errorLogs };
   };
 
   const parseAircallTimestamp = (value) => {
@@ -1668,6 +1818,80 @@ function App() {
     }
   };
 
+  const handleMetaLookup = async (event) => {
+    if (event?.preventDefault) {
+      event.preventDefault();
+    }
+    if (!selectedClient) return;
+    const accountId = metaAccountInput.trim();
+    if (!accountId) {
+      showToast('error', 'Meta account ID required', 'Enter a Meta Ads account ID to continue.');
+      return;
+    }
+
+    setMetaByClient(prev => ({
+      ...prev,
+      [selectedClient.id]: {
+        ...(prev[selectedClient.id] || {}),
+        accountId,
+        status: 'loading',
+        error: null,
+        logs: [],
+        source: null,
+        data: null
+      }
+    }));
+
+    const clientSnapshot = buildClientMetaSnapshot(selectedClient);
+    if (isMetaSnapshotComplete(clientSnapshot)) {
+      setMetaByClient(prev => ({
+        ...prev,
+        [selectedClient.id]: {
+          ...(prev[selectedClient.id] || {}),
+          accountId,
+          status: 'success',
+          error: null,
+          logs: [],
+          source: 'client',
+          data: clientSnapshot
+        }
+      }));
+      return;
+    }
+
+    try {
+      const { snapshot: metaSnapshot, errorLogs } = await fetchMetaSnapshot(accountId);
+      const merged = mergeMetaSnapshots(clientSnapshot, metaSnapshot);
+      const isComplete = isMetaSnapshotComplete(merged);
+      setMetaByClient(prev => ({
+        ...prev,
+        [selectedClient.id]: {
+          ...(prev[selectedClient.id] || {}),
+          accountId,
+          status: isComplete ? 'success' : 'error',
+          error: isComplete ? null : 'Meta data is incomplete. See logs below.',
+          logs: errorLogs,
+          source: clientSnapshot ? 'client+meta' : 'meta',
+          data: merged
+        }
+      }));
+    } catch (error) {
+      const message = normalizeMetaError(error);
+      setMetaByClient(prev => ({
+        ...prev,
+        [selectedClient.id]: {
+          ...(prev[selectedClient.id] || {}),
+          accountId,
+          status: 'error',
+          error: message,
+          logs: [message],
+          source: 'meta',
+          data: clientSnapshot
+        }
+      }));
+    }
+  };
+
   const handleAircallLogin = async (event) => {
     event.preventDefault();
     const trimmedToken = aircallTokenInput.trim();
@@ -2250,6 +2474,7 @@ function App() {
     };
   const selectedSubscriptions = selectedClient?.stripeSubscriptions || [];
   const selectedStripeProfile = selectedClient?.stripeProfile || null;
+  const selectedMetaEntry = selectedClient ? metaByClient[selectedClient.id] : null;
   const isLoggedIn = isAircallLoggedIn && isMetaLoggedIn;
 
   return (
@@ -3307,6 +3532,12 @@ function App() {
                     >
                       Services
                     </button>
+                    <button
+                      className={`detail-tab ${clientDetailTab === 'meta' ? 'active' : ''}`}
+                      onClick={() => setClientDetailTab('meta')}
+                    >
+                      Meta
+                    </button>
                   </div>
 
                   {clientDetailTab === 'overview' && (
@@ -3625,6 +3856,186 @@ function App() {
                       ) : (
                         <div className="service-empty">
                           No Stripe subscriptions have been synced for this client yet. Use Sync with Stripe to pull subscription history.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {clientDetailTab === 'meta' && (
+                    <div>
+                      <div className="meta-panel">
+                        <div className="meta-panel-header">
+                          <div>
+                            <h3 className="meta-panel-title">Meta Risk Snapshot</h3>
+                            <div className="meta-panel-helper">
+                              Load the Meta Ads account to view a streamlined risk overview, team roster, change history, and metrics.
+                            </div>
+                          </div>
+                          {selectedMetaEntry?.source && (
+                            <span className="meta-source-pill">Source: {selectedMetaEntry.source}</span>
+                          )}
+                        </div>
+
+                        <form onSubmit={handleMetaLookup}>
+                          <div className="meta-form">
+                            <div>
+                              <label className="form-label" htmlFor="metaAccountIdInput">Meta Ads Account ID</label>
+                              <input
+                                id="metaAccountIdInput"
+                                className="form-input meta-input"
+                                value={metaAccountInput}
+                                onChange={(event) => setMetaAccountInput(event.target.value)}
+                                placeholder="Enter Meta Ads account ID"
+                              />
+                            </div>
+                            <button className="btn-primary meta-submit" type="submit" disabled={selectedMetaEntry?.status === 'loading'}>
+                              {selectedMetaEntry?.status === 'loading' ? 'Loading...' : 'Load Meta'}
+                            </button>
+                          </div>
+                        </form>
+
+                        {selectedMetaEntry?.status === 'error' && selectedMetaEntry?.error && (
+                          <div className="meta-error">
+                            <strong>Error:</strong> {selectedMetaEntry.error}
+                          </div>
+                        )}
+
+                        {selectedMetaEntry?.logs?.length > 0 && (
+                          <div className="meta-log">
+                            {selectedMetaEntry.logs.join('\n')}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="meta-subtabs">
+                        <button
+                          className={`meta-subtab ${clientMetaTab === 'overview' ? 'active' : ''}`}
+                          onClick={() => setClientMetaTab('overview')}
+                          type="button"
+                        >
+                          Overview
+                        </button>
+                        <button
+                          className={`meta-subtab ${clientMetaTab === 'team' ? 'active' : ''}`}
+                          onClick={() => setClientMetaTab('team')}
+                          type="button"
+                        >
+                          Team
+                        </button>
+                        <button
+                          className={`meta-subtab ${clientMetaTab === 'history' ? 'active' : ''}`}
+                          onClick={() => setClientMetaTab('history')}
+                          type="button"
+                        >
+                          Change History
+                        </button>
+                        <button
+                          className={`meta-subtab ${clientMetaTab === 'metrics' ? 'active' : ''}`}
+                          onClick={() => setClientMetaTab('metrics')}
+                          type="button"
+                        >
+                          Metrics
+                        </button>
+                      </div>
+
+                      {!selectedMetaEntry?.data && (
+                        <div className="service-empty">
+                          Add a Meta Ads account ID to load the risk snapshot for this client.
+                        </div>
+                      )}
+
+                      {selectedMetaEntry?.data && clientMetaTab === 'overview' && (
+                        <div className="meta-grid">
+                          <div className="meta-card">
+                            <div className="meta-card-label">Account Name</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.name || 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">Account Status</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.account_status ?? 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">Currency</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.currency || 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">Amount Spent</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.amount_spent || 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">Balance</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.balance || 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">Timezone</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.overview?.timezone_name || 'Unavailable'}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedMetaEntry?.data && clientMetaTab === 'team' && (
+                        <div className="meta-list">
+                          {(selectedMetaEntry.data.team || []).length > 0 ? (
+                            selectedMetaEntry.data.team.map(member => (
+                              <div key={member.id || member.name} className="meta-list-item">
+                                <div className="meta-list-title">{member.name}</div>
+                                <div className="meta-list-meta">
+                                  <span>{member.role || 'Meta access'}</span>
+                                  <span>{(member.accessLabels || []).join(' · ')}</span>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="service-empty">No team members were found for this account.</div>
+                          )}
+                        </div>
+                      )}
+
+                      {selectedMetaEntry?.data && clientMetaTab === 'history' && (
+                        <div className="meta-list">
+                          {(selectedMetaEntry.data.changeHistory || []).length > 0 ? (
+                            selectedMetaEntry.data.changeHistory.slice(0, 12).map((log, index) => (
+                              <div key={`${log.event_time || log.event_type}-${index}`} className="meta-list-item">
+                                <div className="meta-list-title">{log.translated_event_type || log.event_type || 'Change'}</div>
+                                <div className="meta-list-meta">
+                                  <span>{log.object_name || log.object_type || 'Meta asset'}</span>
+                                  <span>Actor: {log.actor_name || 'Unknown'}</span>
+                                  <span>{formatDateTime(log.event_time)}</span>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="service-empty">No change history was returned for this account.</div>
+                          )}
+                        </div>
+                      )}
+
+                      {selectedMetaEntry?.data && clientMetaTab === 'metrics' && (
+                        <div className="meta-grid">
+                          <div className="meta-card">
+                            <div className="meta-card-label">Spend (last 30d)</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.spend || 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">Impressions</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.impressions || 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">Clicks</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.clicks || 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">CTR</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.ctr || 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">CPC</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.cpc || 'Unavailable'}</div>
+                          </div>
+                          <div className="meta-card">
+                            <div className="meta-card-label">CPM</div>
+                            <div className="meta-card-value">{selectedMetaEntry.data.metrics?.cpm || 'Unavailable'}</div>
+                          </div>
                         </div>
                       )}
                     </div>
