@@ -417,6 +417,30 @@ const STYLES = `
   .meta-list-meta { color: var(--text-secondary); font-size: 0.85rem; display: grid; gap: 0.25rem; }
   .meta-error { margin-top: 1rem; padding: 1rem; border-radius: 0.85rem; background: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.3); color: #fecaca; font-size: 0.85rem; }
   .meta-log { margin-top: 0.75rem; padding: 0.75rem; border-radius: 0.75rem; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.75rem; color: var(--text-secondary); white-space: pre-wrap; }
+  .meta-range-pill { margin-top: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.35rem 0.75rem; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #93c5fd; font-weight: 700; }
+
+  .google-panel { border-radius: 1rem; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 23, 42, 0.6); padding: 1.5rem; box-shadow: 0 18px 35px rgba(0, 0, 0, 0.35); }
+  .google-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .google-panel-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+  .google-panel-helper { color: var(--text-secondary); font-size: 0.9rem; }
+  .google-source-pill { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.35rem 0.75rem; background: rgba(59, 130, 246, 0.16); border: 1px solid rgba(59, 130, 246, 0.35); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #93c5fd; font-weight: 700; }
+  .google-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.75rem; align-items: end; margin-top: 1rem; }
+  .google-input { height: 3rem; }
+  .google-submit { height: 3rem; padding: 0 1.25rem; }
+  .google-subtabs { display: flex; gap: 0.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin: 1.5rem 0 1rem; flex-wrap: wrap; }
+  .google-subtab { padding: 0.4rem 0.85rem; border-radius: 999px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); cursor: pointer; }
+  .google-subtab.active { color: #bfdbfe; border-color: rgba(59, 130, 246, 0.5); background: rgba(59, 130, 246, 0.18); }
+  .google-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+  .google-card { padding: 1rem; border-radius: 0.85rem; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .google-card-label { color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 0.35rem; }
+  .google-card-value { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+  .google-list { display: grid; gap: 0.75rem; }
+  .google-list-item { padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .google-list-title { font-weight: 700; margin-bottom: 0.25rem; }
+  .google-list-meta { color: var(--text-secondary); font-size: 0.85rem; display: grid; gap: 0.25rem; }
+  .google-error { margin-top: 1rem; padding: 1rem; border-radius: 0.85rem; background: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.3); color: #fecaca; font-size: 0.85rem; }
+  .google-log { margin-top: 0.75rem; padding: 0.75rem; border-radius: 0.75rem; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.75rem; color: var(--text-secondary); white-space: pre-wrap; }
+  .google-range-pill { margin-top: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.35rem 0.75rem; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #93c5fd; font-weight: 700; }
 
   /* Services Tab */
   .services-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
@@ -492,6 +516,12 @@ const META_ACCESS_TOKEN_KEY = 'metaAccessToken';
 const META_GRAPH_VERSION = 'v19.0';
 const META_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 const META_LOGO_URL = 'https://i.imgur.com/QjjDjuU.png';
+const GOOGLE_ACCESS_TOKEN_KEY = 'googleAdsAccessToken';
+const GOOGLE_DEVELOPER_TOKEN_KEY = 'googleAdsDeveloperToken';
+const GOOGLE_LOGIN_CUSTOMER_ID_KEY = 'googleAdsLoginCustomerId';
+const GOOGLE_ADS_BASE_URL = 'https://googleads.googleapis.com/v14';
+const DEFAULT_GOOGLE_DEVELOPER_TOKEN = import.meta.env.VITE_GOOGLE_ADS_DEVELOPER_TOKEN || '';
+const DEFAULT_GOOGLE_LOGIN_CUSTOMER_ID = import.meta.env.VITE_GOOGLE_ADS_LOGIN_CUSTOMER_ID || '';
 const BRISBANE_TIME_ZONE = 'Australia/Brisbane';
 
 // --- Seed Data ---
@@ -869,6 +899,20 @@ function App() {
   const [metaAccessToken, setMetaAccessToken] = useState(() => localStorage.getItem(META_ACCESS_TOKEN_KEY) || '');
   const [metaTokenInput, setMetaTokenInput] = useState(() => localStorage.getItem(META_ACCESS_TOKEN_KEY) || '');
   const [isMetaLoggedIn, setIsMetaLoggedIn] = useState(() => Boolean(localStorage.getItem(META_ACCESS_TOKEN_KEY)));
+  const [googleAccessToken, setGoogleAccessToken] = useState(() => localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY) || '');
+  const [googleTokenInput, setGoogleTokenInput] = useState(() => localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY) || '');
+  const [googleDeveloperToken, setGoogleDeveloperToken] = useState(
+    () => localStorage.getItem(GOOGLE_DEVELOPER_TOKEN_KEY) || DEFAULT_GOOGLE_DEVELOPER_TOKEN
+  );
+  const [googleDeveloperTokenInput, setGoogleDeveloperTokenInput] = useState(
+    () => localStorage.getItem(GOOGLE_DEVELOPER_TOKEN_KEY) || DEFAULT_GOOGLE_DEVELOPER_TOKEN
+  );
+  const [googleLoginCustomerId, setGoogleLoginCustomerId] = useState(
+    () => localStorage.getItem(GOOGLE_LOGIN_CUSTOMER_ID_KEY) || DEFAULT_GOOGLE_LOGIN_CUSTOMER_ID
+  );
+  const [googleLoginCustomerIdInput, setGoogleLoginCustomerIdInput] = useState(
+    () => localStorage.getItem(GOOGLE_LOGIN_CUSTOMER_ID_KEY) || DEFAULT_GOOGLE_LOGIN_CUSTOMER_ID
+  );
   const [isSubmittingAircallToken, setIsSubmittingAircallToken] = useState(false);
   const [aircallActivity, setAircallActivity] = useState({});
   const [toast, setToast] = useState(null);
@@ -876,6 +920,9 @@ function App() {
   const [clientMetaTab, setClientMetaTab] = useState('overview');
   const [metaAccountInput, setMetaAccountInput] = useState('');
   const [metaByClient, setMetaByClient] = useState({});
+  const [clientGoogleTab, setClientGoogleTab] = useState('overview');
+  const [googleAccountInput, setGoogleAccountInput] = useState('');
+  const [googleByClient, setGoogleByClient] = useState({});
 
   // Import Review State
   const [isImportReviewOpen, setIsImportReviewOpen] = useState(false);
@@ -900,10 +947,13 @@ function App() {
     if (selectedClient) {
       setClientDetailTab('overview');
       setClientMetaTab('overview');
+      setClientGoogleTab('overview');
       const storedMeta = metaByClient[selectedClient.id];
       setMetaAccountInput(storedMeta?.accountId || selectedClient.metaAccountId || '');
+      const storedGoogle = googleByClient[selectedClient.id];
+      setGoogleAccountInput(storedGoogle?.accountId || selectedClient.googleAccountId || '');
     }
-  }, [metaByClient, selectedClient]);
+  }, [googleByClient, metaByClient, selectedClient]);
 
 
   // Form State
@@ -982,6 +1032,18 @@ function App() {
     }
   };
 
+  const normalizeGoogleError = (error) => {
+    if (!error) return 'Unknown error';
+    if (typeof error === 'string') return error;
+    if (error.message) return error.message;
+    if (error.error?.message) return error.error.message;
+    try {
+      return JSON.stringify(error, null, 2);
+    } catch {
+      return String(error);
+    }
+  };
+
   const buildClientMetaSnapshot = (client) => {
     if (!client) return null;
     const overview = client.metaOverview || client.overview || client.metaRiskOverview || null;
@@ -996,7 +1058,30 @@ function App() {
     return { overview, metrics, team, changeHistory };
   };
 
+  const buildClientGoogleSnapshot = (client) => {
+    if (!client) return null;
+    const overview = client.googleOverview || client.googleAdsOverview || client.overview || null;
+    const metrics = client.googleMetrics || client.googleAdsMetrics || client.performance || null;
+    const team = Array.isArray(client.googleTeam) ? client.googleTeam : Array.isArray(client.team) ? client.team : [];
+    const changeHistory = Array.isArray(client.googleChangeHistory)
+      ? client.googleChangeHistory
+      : Array.isArray(client.changeHistory)
+        ? client.changeHistory
+        : [];
+    if (!overview && !metrics && team.length === 0 && changeHistory.length === 0) return null;
+    return { overview, metrics, team, changeHistory };
+  };
+
   const isMetaSnapshotComplete = (snapshot) => {
+    if (!snapshot) return false;
+    const hasOverview = snapshot.overview && Object.keys(snapshot.overview).length > 0;
+    const hasMetrics = snapshot.metrics && Object.keys(snapshot.metrics).length > 0;
+    const hasTeam = Array.isArray(snapshot.team) && snapshot.team.length > 0;
+    const hasChangeHistory = Array.isArray(snapshot.changeHistory) && snapshot.changeHistory.length > 0;
+    return hasOverview && hasMetrics && hasTeam && hasChangeHistory;
+  };
+
+  const isGoogleSnapshotComplete = (snapshot) => {
     if (!snapshot) return false;
     const hasOverview = snapshot.overview && Object.keys(snapshot.overview).length > 0;
     const hasMetrics = snapshot.metrics && Object.keys(snapshot.metrics).length > 0;
@@ -1014,6 +1099,38 @@ function App() {
       team: primary.team?.length ? primary.team : fallback.team || [],
       changeHistory: primary.changeHistory?.length ? primary.changeHistory : fallback.changeHistory || []
     };
+  };
+
+  const mergeGoogleSnapshots = (primary, fallback) => {
+    if (!primary) return fallback;
+    if (!fallback) return primary;
+    return {
+      overview: primary.overview || fallback.overview,
+      metrics: primary.metrics || fallback.metrics,
+      team: primary.team?.length ? primary.team : fallback.team || [],
+      changeHistory: primary.changeHistory?.length ? primary.changeHistory : fallback.changeHistory || []
+    };
+  };
+
+  const parseGoogleAdsStream = (payload) => {
+    if (!Array.isArray(payload)) return [];
+    return payload.flatMap(chunk => chunk?.results || []);
+  };
+
+  const formatGoogleMicros = (micros, currency) => {
+    const numeric = Number(micros);
+    if (!Number.isFinite(numeric)) return 'Unavailable';
+    const amount = numeric / 1_000_000;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD'
+    }).format(amount);
+  };
+
+  const formatGoogleRate = (value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 'Unavailable';
+    return `${(numeric * 100).toFixed(2)}%`;
   };
 
   const callMetaAPI = async (endpoint, params = {}) => {
@@ -1076,6 +1193,127 @@ function App() {
       team = Array.from(uniqueMembers.values());
     } catch (error) {
       errorLogs.push(`Change history error: ${normalizeMetaError(error)}`);
+    }
+
+    const snapshot = { overview, metrics, team, changeHistory };
+    const missingFields = [];
+    if (!overview) missingFields.push('overview');
+    if (!metrics) missingFields.push('metrics');
+    if (!team.length) missingFields.push('team');
+    if (!changeHistory.length) missingFields.push('changeHistory');
+    if (missingFields.length > 0) {
+      errorLogs.push(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+
+    return { snapshot, errorLogs };
+  };
+
+  const callGoogleAdsAPI = async (customerId, query) => {
+    if (!googleAccessToken) {
+      throw new Error('Google Ads access token is missing. Add it from the login screen to continue.');
+    }
+    if (!googleDeveloperToken) {
+      throw new Error('Google Ads developer token is missing. Add it from the login screen to continue.');
+    }
+    const headers = {
+      Authorization: `Bearer ${googleAccessToken}`,
+      'developer-token': googleDeveloperToken,
+      'Content-Type': 'application/json'
+    };
+    if (googleLoginCustomerId) {
+      headers['login-customer-id'] = googleLoginCustomerId;
+    }
+    const response = await fetch(`${GOOGLE_ADS_BASE_URL}/customers/${customerId}/googleAds:searchStream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query })
+    });
+    const data = await response.json();
+    if (!response.ok || data?.error) {
+      throw data?.error || new Error('Google Ads API request failed.');
+    }
+    return data;
+  };
+
+  const fetchGoogleSnapshot = async (customerId) => {
+    const errorLogs = [];
+    let overview = null;
+    let metrics = null;
+    let changeHistory = [];
+    let team = [];
+
+    try {
+      const payload = await callGoogleAdsAPI(
+        customerId,
+        'SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.time_zone, customer.status FROM customer LIMIT 1'
+      );
+      const results = parseGoogleAdsStream(payload);
+      const customer = results?.[0]?.customer || null;
+      overview = customer
+        ? {
+            id: customer.id,
+            name: customer.descriptive_name,
+            currency_code: customer.currency_code,
+            time_zone: customer.time_zone,
+            status: customer.status
+          }
+        : null;
+    } catch (error) {
+      errorLogs.push(`Overview error: ${normalizeGoogleError(error)}`);
+    }
+
+    try {
+      const payload = await callGoogleAdsAPI(
+        customerId,
+        'SELECT metrics.impressions, metrics.clicks, metrics.ctr, metrics.average_cpc, metrics.average_cpm, metrics.cost_micros FROM customer WHERE segments.date DURING LAST_30_DAYS'
+      );
+      const results = parseGoogleAdsStream(payload);
+      metrics = results?.[0]?.metrics || null;
+    } catch (error) {
+      errorLogs.push(`Metrics error: ${normalizeGoogleError(error)}`);
+    }
+
+    try {
+      const payload = await callGoogleAdsAPI(
+        customerId,
+        'SELECT change_event.change_date_time, change_event.user_email, change_event.change_resource_name, change_event.change_resource_type, change_event.resource_name, change_event.client_type FROM change_event WHERE change_event.change_date_time DURING LAST_30_DAYS LIMIT 50'
+      );
+      const results = parseGoogleAdsStream(payload);
+      changeHistory = results.map(item => item.changeEvent).filter(Boolean);
+      const uniqueMembers = new Map();
+      changeHistory.forEach((log, index) => {
+        const key = log.userEmail || `user-${index}`;
+        if (!uniqueMembers.has(key)) {
+          uniqueMembers.set(key, {
+            id: key,
+            name: log.userEmail || 'Unknown user',
+            role: log.changeResourceType || 'Google Ads',
+            accessLabels: [log.clientType || 'Account access']
+          });
+        }
+      });
+      team = Array.from(uniqueMembers.values());
+    } catch (error) {
+      errorLogs.push(`Change history error: ${normalizeGoogleError(error)}`);
+    }
+
+    try {
+      const payload = await callGoogleAdsAPI(
+        customerId,
+        'SELECT customer_user_access.user_id, customer_user_access.user_email, customer_user_access.access_role FROM customer_user_access'
+      );
+      const results = parseGoogleAdsStream(payload);
+      const accessRows = results.map(item => item.customerUserAccess).filter(Boolean);
+      if (accessRows.length > 0) {
+        team = accessRows.map((row, index) => ({
+          id: row.userId || row.userEmail || `member-${index}`,
+          name: row.userEmail || 'Unknown user',
+          role: row.accessRole || 'Google Ads access',
+          accessLabels: [row.accessRole || 'Access role']
+        }));
+      }
+    } catch (error) {
+      errorLogs.push(`Team access error: ${normalizeGoogleError(error)}`);
     }
 
     const snapshot = { overview, metrics, team, changeHistory };
@@ -1892,11 +2130,88 @@ function App() {
     }
   };
 
+  const handleGoogleLookup = async (event) => {
+    if (event?.preventDefault) {
+      event.preventDefault();
+    }
+    if (!selectedClient) return;
+    const accountId = googleAccountInput.trim();
+    if (!accountId) {
+      showToast('error', 'Google Ads customer ID required', 'Enter a Google Ads customer ID to continue.');
+      return;
+    }
+
+    setGoogleByClient(prev => ({
+      ...prev,
+      [selectedClient.id]: {
+        ...(prev[selectedClient.id] || {}),
+        accountId,
+        status: 'loading',
+        error: null,
+        logs: [],
+        source: null,
+        data: null
+      }
+    }));
+
+    const clientSnapshot = buildClientGoogleSnapshot(selectedClient);
+    if (isGoogleSnapshotComplete(clientSnapshot)) {
+      setGoogleByClient(prev => ({
+        ...prev,
+        [selectedClient.id]: {
+          ...(prev[selectedClient.id] || {}),
+          accountId,
+          status: 'success',
+          error: null,
+          logs: [],
+          source: 'client',
+          data: clientSnapshot
+        }
+      }));
+      return;
+    }
+
+    try {
+      const { snapshot: googleSnapshot, errorLogs } = await fetchGoogleSnapshot(accountId);
+      const merged = mergeGoogleSnapshots(clientSnapshot, googleSnapshot);
+      const isComplete = isGoogleSnapshotComplete(merged);
+      setGoogleByClient(prev => ({
+        ...prev,
+        [selectedClient.id]: {
+          ...(prev[selectedClient.id] || {}),
+          accountId,
+          status: isComplete ? 'success' : 'error',
+          error: isComplete ? null : 'Google Ads data is incomplete. See logs below.',
+          logs: errorLogs,
+          source: clientSnapshot ? 'client+google' : 'google',
+          data: merged
+        }
+      }));
+    } catch (error) {
+      const message = normalizeGoogleError(error);
+      setGoogleByClient(prev => ({
+        ...prev,
+        [selectedClient.id]: {
+          ...(prev[selectedClient.id] || {}),
+          accountId,
+          status: 'error',
+          error: message,
+          logs: [message],
+          source: 'google',
+          data: clientSnapshot
+        }
+      }));
+    }
+  };
+
   const handleAircallLogin = async (event) => {
     event.preventDefault();
     const trimmedToken = aircallTokenInput.trim();
     const trimmedAppId = aircallAppIdInput.trim();
     const trimmedMetaToken = metaTokenInput.trim();
+    const trimmedGoogleToken = googleTokenInput.trim();
+    const trimmedGoogleDeveloperToken = googleDeveloperTokenInput.trim();
+    const trimmedGoogleLoginCustomerId = googleLoginCustomerIdInput.trim();
     if (!trimmedAppId) {
       showToast('error', 'App ID required', 'Enter your Aircall App ID to continue.');
       return;
@@ -1915,14 +2230,35 @@ function App() {
       localStorage.setItem('aircallToken', trimmedToken);
       localStorage.setItem('aircallAppId', trimmedAppId);
       localStorage.setItem(META_ACCESS_TOKEN_KEY, trimmedMetaToken);
+      if (trimmedGoogleToken) {
+        localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, trimmedGoogleToken);
+      } else {
+        localStorage.removeItem(GOOGLE_ACCESS_TOKEN_KEY);
+      }
+      if (trimmedGoogleDeveloperToken) {
+        localStorage.setItem(GOOGLE_DEVELOPER_TOKEN_KEY, trimmedGoogleDeveloperToken);
+      } else {
+        localStorage.removeItem(GOOGLE_DEVELOPER_TOKEN_KEY);
+      }
+      if (trimmedGoogleLoginCustomerId) {
+        localStorage.setItem(GOOGLE_LOGIN_CUSTOMER_ID_KEY, trimmedGoogleLoginCustomerId);
+      } else {
+        localStorage.removeItem(GOOGLE_LOGIN_CUSTOMER_ID_KEY);
+      }
       setAircallToken(trimmedToken);
       setAircallAppId(trimmedAppId);
       setIsAircallLoggedIn(true);
       setMetaAccessToken(trimmedMetaToken);
       setIsMetaLoggedIn(true);
+      setGoogleAccessToken(trimmedGoogleToken);
+      setGoogleDeveloperToken(trimmedGoogleDeveloperToken);
+      setGoogleLoginCustomerId(trimmedGoogleLoginCustomerId);
       setAircallTokenInput('');
       setAircallAppIdInput(trimmedAppId);
       setMetaTokenInput('');
+      setGoogleTokenInput('');
+      setGoogleDeveloperTokenInput(trimmedGoogleDeveloperToken);
+      setGoogleLoginCustomerIdInput(trimmedGoogleLoginCustomerId);
     } catch (error) {
       showToast('error', 'Aircall login failed', error.message);
     } finally {
@@ -1934,6 +2270,9 @@ function App() {
     localStorage.removeItem('aircallToken');
     localStorage.removeItem('aircallAppId');
     localStorage.removeItem(META_ACCESS_TOKEN_KEY);
+    localStorage.removeItem(GOOGLE_ACCESS_TOKEN_KEY);
+    localStorage.removeItem(GOOGLE_DEVELOPER_TOKEN_KEY);
+    localStorage.removeItem(GOOGLE_LOGIN_CUSTOMER_ID_KEY);
     setAircallToken('');
     setAircallAppId('');
     setAircallTokenInput('');
@@ -1944,6 +2283,12 @@ function App() {
     setMetaAccessToken('');
     setMetaTokenInput('');
     setIsMetaLoggedIn(false);
+    setGoogleAccessToken('');
+    setGoogleDeveloperToken(DEFAULT_GOOGLE_DEVELOPER_TOKEN);
+    setGoogleLoginCustomerId(DEFAULT_GOOGLE_LOGIN_CUSTOMER_ID);
+    setGoogleTokenInput('');
+    setGoogleDeveloperTokenInput(DEFAULT_GOOGLE_DEVELOPER_TOKEN);
+    setGoogleLoginCustomerIdInput(DEFAULT_GOOGLE_LOGIN_CUSTOMER_ID);
   };
 
   const handleRecentActivityClick = () => {
@@ -2475,6 +2820,7 @@ function App() {
   const selectedSubscriptions = selectedClient?.stripeSubscriptions || [];
   const selectedStripeProfile = selectedClient?.stripeProfile || null;
   const selectedMetaEntry = selectedClient ? metaByClient[selectedClient.id] : null;
+  const selectedGoogleEntry = selectedClient ? googleByClient[selectedClient.id] : null;
   const isLoggedIn = isAircallLoggedIn && isMetaLoggedIn;
 
   return (
@@ -2498,7 +2844,7 @@ function App() {
               <img src={META_LOGO_URL} alt="Purge Digital logo" />
               <div>
                 <h1 className="login-title">PurgeDigital CRM</h1>
-                <p className="login-subtitle">Connect Aircall and Meta to unlock CRM activity and Meta Risk insights.</p>
+                <p className="login-subtitle">Connect Aircall, Meta, and Google Ads to unlock CRM activity and ad risk insights.</p>
               </div>
             </div>
             <form className="login-form" onSubmit={handleAircallLogin}>
@@ -2537,6 +2883,42 @@ function App() {
                   placeholder="Paste your Meta system user token"
                 />
                 <div className="login-helper">Your Meta token is stored locally in this browser only.</div>
+              </div>
+              <div>
+                <label className="form-label" htmlFor="googleAccessToken">Google Ads Access Token</label>
+                <input
+                  id="googleAccessToken"
+                  type="password"
+                  className="login-input"
+                  value={googleTokenInput}
+                  onChange={(event) => setGoogleTokenInput(event.target.value)}
+                  placeholder="Paste your Google Ads access token"
+                />
+                <div className="login-helper">Optional for now — stored locally in this browser only.</div>
+              </div>
+              <div>
+                <label className="form-label" htmlFor="googleDeveloperToken">Google Ads Developer Token</label>
+                <input
+                  id="googleDeveloperToken"
+                  type="password"
+                  className="login-input"
+                  value={googleDeveloperTokenInput}
+                  onChange={(event) => setGoogleDeveloperTokenInput(event.target.value)}
+                  placeholder="Paste your Google Ads developer token"
+                />
+                <div className="login-helper">Optional for now — used when pulling Google Ads account data.</div>
+              </div>
+              <div>
+                <label className="form-label" htmlFor="googleLoginCustomerId">Google Ads Login Customer ID (optional)</label>
+                <input
+                  id="googleLoginCustomerId"
+                  type="text"
+                  className="login-input"
+                  value={googleLoginCustomerIdInput}
+                  onChange={(event) => setGoogleLoginCustomerIdInput(event.target.value)}
+                  placeholder="Manager account ID (if required)"
+                />
+                <div className="login-helper">Add this if you use a manager account to access client customers.</div>
               </div>
               <button className="login-btn" type="submit" disabled={isSubmittingAircallToken}>
                 {isSubmittingAircallToken ? 'Initializing workspace…' : 'Initialize Workspace'}
@@ -3538,6 +3920,12 @@ function App() {
                     >
                       Meta
                     </button>
+                    <button
+                      className={`detail-tab ${clientDetailTab === 'google' ? 'active' : ''}`}
+                      onClick={() => setClientDetailTab('google')}
+                    >
+                      Google Ads
+                    </button>
                   </div>
 
                   {clientDetailTab === 'overview' && (
@@ -3875,6 +4263,7 @@ function App() {
                             <span className="meta-source-pill">Source: {selectedMetaEntry.source}</span>
                           )}
                         </div>
+                        <div className="meta-range-pill">Date range: Last 30 days</div>
 
                         <form onSubmit={handleMetaLookup}>
                           <div className="meta-form">
@@ -4035,6 +4424,198 @@ function App() {
                           <div className="meta-card">
                             <div className="meta-card-label">CPM</div>
                             <div className="meta-card-value">{selectedMetaEntry.data.metrics?.cpm || 'Unavailable'}</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {clientDetailTab === 'google' && (
+                    <div>
+                      <div className="google-panel">
+                        <div className="google-panel-header">
+                          <div>
+                            <h3 className="google-panel-title">Google Ads Snapshot</h3>
+                            <div className="google-panel-helper">
+                              Load the Google Ads account to view a streamlined overview, team roster, change history, and metrics.
+                            </div>
+                          </div>
+                          {selectedGoogleEntry?.source && (
+                            <span className="google-source-pill">Source: {selectedGoogleEntry.source}</span>
+                          )}
+                        </div>
+                        <div className="google-range-pill">Date range: Last 30 days</div>
+
+                        <form onSubmit={handleGoogleLookup}>
+                          <div className="google-form">
+                            <div>
+                              <label className="form-label" htmlFor="googleAccountIdInput">Google Ads Customer ID</label>
+                              <input
+                                id="googleAccountIdInput"
+                                className="form-input google-input"
+                                value={googleAccountInput}
+                                onChange={(event) => setGoogleAccountInput(event.target.value)}
+                                placeholder="Enter Google Ads customer ID"
+                              />
+                            </div>
+                            <button className="btn-primary google-submit" type="submit" disabled={selectedGoogleEntry?.status === 'loading'}>
+                              {selectedGoogleEntry?.status === 'loading' ? 'Loading...' : 'Load Google Ads'}
+                            </button>
+                          </div>
+                        </form>
+
+                        {selectedGoogleEntry?.status === 'error' && selectedGoogleEntry?.error && (
+                          <div className="google-error">
+                            <strong>Error:</strong> {selectedGoogleEntry.error}
+                          </div>
+                        )}
+
+                        {selectedGoogleEntry?.logs?.length > 0 && (
+                          <div className="google-log">
+                            {selectedGoogleEntry.logs.join('\n')}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="google-subtabs">
+                        <button
+                          className={`google-subtab ${clientGoogleTab === 'overview' ? 'active' : ''}`}
+                          onClick={() => setClientGoogleTab('overview')}
+                          type="button"
+                        >
+                          Overview
+                        </button>
+                        <button
+                          className={`google-subtab ${clientGoogleTab === 'team' ? 'active' : ''}`}
+                          onClick={() => setClientGoogleTab('team')}
+                          type="button"
+                        >
+                          Team
+                        </button>
+                        <button
+                          className={`google-subtab ${clientGoogleTab === 'history' ? 'active' : ''}`}
+                          onClick={() => setClientGoogleTab('history')}
+                          type="button"
+                        >
+                          Change History
+                        </button>
+                        <button
+                          className={`google-subtab ${clientGoogleTab === 'metrics' ? 'active' : ''}`}
+                          onClick={() => setClientGoogleTab('metrics')}
+                          type="button"
+                        >
+                          Metrics
+                        </button>
+                      </div>
+
+                      {!selectedGoogleEntry?.data && (
+                        <div className="service-empty">
+                          Add a Google Ads customer ID to load the ads snapshot for this client.
+                        </div>
+                      )}
+
+                      {selectedGoogleEntry?.data && clientGoogleTab === 'overview' && (
+                        <div className="google-grid">
+                          <div className="google-card">
+                            <div className="google-card-label">Account Name</div>
+                            <div className="google-card-value">{selectedGoogleEntry.data.overview?.name || 'Unavailable'}</div>
+                          </div>
+                          <div className="google-card">
+                            <div className="google-card-label">Customer ID</div>
+                            <div className="google-card-value">{selectedGoogleEntry.data.overview?.id || 'Unavailable'}</div>
+                          </div>
+                          <div className="google-card">
+                            <div className="google-card-label">Account Status</div>
+                            <div className="google-card-value">{selectedGoogleEntry.data.overview?.status || 'Unavailable'}</div>
+                          </div>
+                          <div className="google-card">
+                            <div className="google-card-label">Currency</div>
+                            <div className="google-card-value">{selectedGoogleEntry.data.overview?.currency_code || 'Unavailable'}</div>
+                          </div>
+                          <div className="google-card">
+                            <div className="google-card-label">Timezone</div>
+                            <div className="google-card-value">{selectedGoogleEntry.data.overview?.time_zone || 'Unavailable'}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedGoogleEntry?.data && clientGoogleTab === 'team' && (
+                        <div className="google-list">
+                          {(selectedGoogleEntry.data.team || []).length > 0 ? (
+                            selectedGoogleEntry.data.team.map(member => (
+                              <div key={member.id || member.name} className="google-list-item">
+                                <div className="google-list-title">{member.name}</div>
+                                <div className="google-list-meta">
+                                  <span>{member.role || 'Google Ads access'}</span>
+                                  <span>{(member.accessLabels || []).join(' · ')}</span>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="service-empty">No team members were found for this account.</div>
+                          )}
+                        </div>
+                      )}
+
+                      {selectedGoogleEntry?.data && clientGoogleTab === 'history' && (
+                        <div className="google-list">
+                          {(selectedGoogleEntry.data.changeHistory || []).length > 0 ? (
+                            selectedGoogleEntry.data.changeHistory.slice(0, 12).map((log, index) => (
+                              <div key={`${log.changeDateTime || log.changeResourceName || index}`} className="google-list-item">
+                                <div className="google-list-title">{log.changeResourceType || 'Change'}</div>
+                                <div className="google-list-meta">
+                                  <span>{log.changeResourceName || log.resourceName || 'Google Ads asset'}</span>
+                                  <span>Actor: {log.userEmail || 'Unknown'}</span>
+                                  <span>{formatDateTime(log.changeDateTime)}</span>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="service-empty">No change history was returned for this account.</div>
+                          )}
+                        </div>
+                      )}
+
+                      {selectedGoogleEntry?.data && clientGoogleTab === 'metrics' && (
+                        <div className="google-grid">
+                          <div className="google-card">
+                            <div className="google-card-label">Spend (last 30d)</div>
+                            <div className="google-card-value">
+                              {formatGoogleMicros(
+                                selectedGoogleEntry.data.metrics?.costMicros ?? selectedGoogleEntry.data.metrics?.cost_micros,
+                                selectedGoogleEntry.data.overview?.currency_code
+                              )}
+                            </div>
+                          </div>
+                          <div className="google-card">
+                            <div className="google-card-label">Impressions</div>
+                            <div className="google-card-value">{selectedGoogleEntry.data.metrics?.impressions || 'Unavailable'}</div>
+                          </div>
+                          <div className="google-card">
+                            <div className="google-card-label">Clicks</div>
+                            <div className="google-card-value">{selectedGoogleEntry.data.metrics?.clicks || 'Unavailable'}</div>
+                          </div>
+                          <div className="google-card">
+                            <div className="google-card-label">CTR</div>
+                            <div className="google-card-value">{formatGoogleRate(selectedGoogleEntry.data.metrics?.ctr)}</div>
+                          </div>
+                          <div className="google-card">
+                            <div className="google-card-label">Avg. CPC</div>
+                            <div className="google-card-value">
+                              {formatGoogleMicros(
+                                selectedGoogleEntry.data.metrics?.averageCpc ?? selectedGoogleEntry.data.metrics?.average_cpc,
+                                selectedGoogleEntry.data.overview?.currency_code
+                              )}
+                            </div>
+                          </div>
+                          <div className="google-card">
+                            <div className="google-card-label">Avg. CPM</div>
+                            <div className="google-card-value">
+                              {formatGoogleMicros(
+                                selectedGoogleEntry.data.metrics?.averageCpm ?? selectedGoogleEntry.data.metrics?.average_cpm,
+                                selectedGoogleEntry.data.overview?.currency_code
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}
