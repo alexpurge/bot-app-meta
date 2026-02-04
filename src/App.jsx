@@ -4551,7 +4551,8 @@ function App() {
       window.alert("No valid clients to import.");
       return;
     }
-    setClients(prev => [...validClients, ...prev]);
+    const orderedClients = [...validClients].reverse();
+    setClients(prev => [...orderedClients, ...prev]);
     setIsImportReviewOpen(false);
     setPendingImports([]);
     window.alert(`Successfully imported ${validClients.length} clients.`);
