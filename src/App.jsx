@@ -7574,18 +7574,11 @@ function App() {
                   {clientDetailTab === 'google' && (
                     <div>
                       <div className="google-panel">
-                        <div className="google-panel-header">
-                          <div>
-                            <h3 className="google-panel-title">Google Ads Snapshot</h3>
-                            <div className="google-panel-helper">
-                              Load the Google Ads account to view a streamlined overview, team roster, change history, and metrics.
-                            </div>
-                          </div>
-                          {selectedGoogleEntry?.source && (
+                        {selectedGoogleEntry?.source && (
+                          <div className="google-panel-header">
                             <span className="google-source-pill">Source: {selectedGoogleEntry.source}</span>
-                          )}
-                        </div>
-                        <div className="google-range-pill">Date range: Last 30 days</div>
+                          </div>
+                        )}
 
                         <form onSubmit={handleGoogleLookup}>
                           <div className="google-form">
