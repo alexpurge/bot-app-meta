@@ -4329,8 +4329,13 @@ function App() {
 
     const potentialClients = [];
 
+    const normalizeHeaderCell = (value) => String(value || "").trim().toLowerCase();
+
     // Iterate over each found header index
-    for (const i of clientHeaderIndices) {
+    for (let index = 0; index < clientHeaderIndices.length; index += 1) {
+      const i = clientHeaderIndices[index];
+      const nextHeaderIndex = clientHeaderIndices[index + 1] ?? rows.length;
+      const blockEnd = Math.min(nextHeaderIndex, rows.length);
       if (i + 5 >= rows.length) break;
 
       const rowData1 = rows[i + 1] || []; // Name, Contact, Billing
@@ -4400,6 +4405,17 @@ function App() {
       // Clean Budget String (remove "Budget: " prefix if exists)
       let budget = rawBudget.replace(/^Budget:\s*/i, '').split('\n')[0]; // Take first line usually
 
+      // --- Google Ads ID (Column D) ---
+      let googleAccountId = '';
+      for (let r = i; r < blockEnd - 1; r += 1) {
+        const headerCell = normalizeHeaderCell(rows[r]?.[3]);
+        if (headerCell.startsWith('google ads id')) {
+          const idValue = rows[r + 1]?.[3] ?? '';
+          googleAccountId = String(idValue).trim();
+          break;
+        }
+      }
+
       // --- Phone Formatting Logic ---
       let finalPhone = rawPhone;
       let phoneStatus = 'valid'; // 'valid' or 'needs_format'
@@ -4435,6 +4451,7 @@ function App() {
         service: rawService,
         goals: rawGoals,
         budget: budget,
+        googleAccountId: googleAccountId,
         capacity: rawCapacity,
         additionalInfo: rawAdditional,
         notes: combinedNotes.join('\n'),
