@@ -4229,6 +4229,9 @@ function App() {
         end: range.end.toISOString()
       },
       clients: clients.map(client => ({
+        ...(String(googleByClient[client.id]?.accountId || client.googleAccountId || '').trim()
+          ? { 'Google Ads ID': String(googleByClient[client.id]?.accountId || client.googleAccountId || '').trim() }
+          : {}),
         ...client,
         overview: buildOverviewSnapshot(client, range),
         team: Array.isArray(client.team) ? client.team : [],
