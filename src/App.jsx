@@ -4164,6 +4164,25 @@ function App() {
     if (!bulkActionType) return;
     if (selectedClientIds.size === 0) return;
 
+    if (bulkActionType === 'export-json') {
+      const selectedClients = clients.filter(client => selectedClientIds.has(client.id));
+      const exportPayload = {
+        generatedAt: new Date().toISOString(),
+        totalSelected: selectedClients.length,
+        clients: selectedClients
+      };
+
+      const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(exportPayload, null, 2))}`;
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute('href', dataStr);
+      downloadAnchorNode.setAttribute('download', 'selected_clients_export.json');
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      setBulkActionType('');
+      return;
+    }
+
     if (bulkActionType === 'delete') {
       if (window.confirm(`Are you sure you want to delete ${selectedClientIds.size} clients?`)) {
         setClients(clients.filter(c => !selectedClientIds.has(c.id)));
@@ -4933,6 +4952,7 @@ function App() {
                               <option value="Active">Set Active</option>
                               <option value="Paused">Set Paused</option>
                               <option value="Cancelled">Set Cancelled</option>
+                              <option value="export-json">Export JSON File</option>
                               <option value="delete">Delete Selected</option>
                             </select>
                             <ChevronDown className="custom-select-arrow" size={16} />
